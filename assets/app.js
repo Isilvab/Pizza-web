@@ -10,10 +10,18 @@ document.addEventListener('DOMContentLoaded', () => {
         diary: [],
         doughRecipes: [],
         events: [], // <--- COLECCIÓN DE EVENTOS
-        equipment: [] // <--- NUEVA COLECCIÓN DE EQUIPO
+        equipment: []
     };
+    const DEFAULT_EQUIPMENT_PRESETS = [
+        { name: 'Pala para pizza', image: DEFAULT_PLACEHOLDER },
+        { name: 'Piedra o acero para horno', image: DEFAULT_PLACEHOLDER },
+        { name: 'Cortador de pizza', image: DEFAULT_PLACEHOLDER },
+        { name: 'Cajones para fermentar', image: DEFAULT_PLACEHOLDER },
+        { name: 'Termómetro infrarrojo', image: DEFAULT_PLACEHOLDER }
+    ];
     let appData = { ...defaultData };
-    
+    let appInitialized = false;
+
     // --- Variable temporal para el archivo de imagen ---
     let currentRecipeImageFile = null;
 
@@ -81,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const addChecklistItemBtn = document.getElementById('add-checklist-item-btn');
     const equipmentSearchInput = document.getElementById('equipment-search');
     const equipmentSearchResults = document.getElementById('equipment-search-results');
+    const loadEquipmentPresetsBtn = document.getElementById('load-equipment-presets-btn');
 
     // --- Selectores (Equipo Predefinido) ---
     const equipmentList = document.getElementById('equipment-list');
@@ -99,8 +108,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const syncNowBtn = document.getElementById('sync-now-btn');
     const userProfileDiv = document.getElementById('user-profile');
     const userAvatar = document.getElementById('user-avatar');
-    const userEmail = document.getElementById('user-email');
+    const userEmail = document.getElementById('user-email-menu'); // <-- CAMBIADO
     const appContainerMain = document.getElementById('app-container-main');
+    const sessionMenu = document.getElementById('session-menu'); // <-- NUEVO
+    const syncToggle = document.getElementById('sync-toggle'); // <-- NUEVO
+    let syncEnabled = true; // <-- NUEVO
 
 
     // --- Utilidades ---
@@ -115,21 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const savedTheme = localStorage.getItem('theme') || 'light';
             applyTheme(savedTheme);
-            
-            setupTabNavigation();
-            setupThemeToggle();
-            setupDataManagement();
-            setupCalculator();
-            setupModalControls();
-            setupFormHandlers(); 
-            setupEventListeners(); 
-            setupIngredientSearch();
-            setupEquipmentSearch(); 
-            setupTooltipEvents();
-            setupImageUpload(); 
-            setupAuthButtons();
-            setupShoppingListControls(); // <--- LISTO: Nuevos listeners para compras
-            
+
             if (typeof initFirebaseSync === 'function') {
                 initFirebaseSync(handleUserLogin, handleUserLogout);
             } else {
@@ -141,6 +139,23 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error fatal durante la inicialización:", error);
             alert("Error fatal al cargar la app. Ver la consola.");
         }
+    }
+
+    function startApp() {
+        if (appInitialized) return;
+        appInitialized = true;
+
+        // Se mantienen aquí las configuraciones que dependen de que la app esté lista
+        setupTabNavigation();
+        setupThemeToggle();
+        setupDataManagement();
+        setupCalculator();
+        setupIngredientSearch();
+        setupEquipmentSearch();
+        setupTooltipEvents();
+        setupImageUpload();
+        setupShoppingListControls();
+        setupEquipmentPresetsControl();
     }
 
     // =================================================================
@@ -172,20 +187,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3. GESTIÓN DE MODALES --- (MODIFICADO)
     // =================================================================
     function setupModalControls() {
-        addRecipeBtn.addEventListener('click', () => openRecipeModal());
-        addIngredientBtn.addEventListener('click', () => openInventoryModal());
-        addDiaryEntryBtn.addEventListener('click', () => openDiaryModal());
-        addEventBtn.addEventListener('click', () => openEventModal()); 
-        addEquipmentBtn.addEventListener('click', () => openEquipmentModal()); 
-        saveDoughRecipeBtn.addEventListener('click', () => openDoughRecipeModal());
-        loadDoughRecipeBtn.addEventListener('click', loadDoughRecipeToCalculator);
-        viewDoughRecipeBtn.addEventListener('click', () => {
+        // Ensure the static 'Add Recipe' button has a direct listener.
+        if (addRecipeBtn) {
+            addRecipeBtn.addEventListener('click', () => {
+                // Call openRecipeModal without an ID to open it in 'new' mode.
+                openRecipeModal();
+            });
+        }
+
+        if (addIngredientBtn) addIngredientBtn.addEventListener('click', () => openInventoryModal());
+        if (addDiaryEntryBtn) addDiaryEntryBtn.addEventListener('click', () => openDiaryModal());
+        if (addEventBtn) addEventBtn.addEventListener('click', () => openEventModal());
+        if (addEquipmentBtn) addEquipmentBtn.addEventListener('click', () => openEquipmentModal());
+        if (saveDoughRecipeBtn) saveDoughRecipeBtn.addEventListener('click', () => openDoughRecipeModal());
+        if (loadDoughRecipeBtn) loadDoughRecipeBtn.addEventListener('click', loadDoughRecipeToCalculator);
+        if (viewDoughRecipeBtn) viewDoughRecipeBtn.addEventListener('click', () => {
             const id = doughRecipeSelect.value;
-            if(id) openDoughDetailsModal(id);
+            if (id) openDoughDetailsModal(id);
         });
-        deleteDoughRecipeBtn.addEventListener('click', deleteDoughRecipe);
+        if (deleteDoughRecipeBtn) deleteDoughRecipeBtn.addEventListener('click', deleteDoughRecipe);
         
         document.querySelectorAll('.modal-close-btn').forEach(btn => {
+            btn.type = 'button';
             btn.addEventListener('click', closeModal);
         });
         modalContainer.addEventListener('click', (e) => {
@@ -195,6 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     function openModal(modalElement) {
+        if (!modalElement) return;
+        allModals.forEach(modal => {
+            if (modal !== modalElement) modal.style.display = 'none';
+        });
         modalElement.style.display = 'block';
         modalContainer.classList.add('visible');
     }
@@ -228,27 +255,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Apertura de Modales (Recetas, Inventario, Masa, Diario) ---
     function openRecipeModal(recipeId = null) {
         currentRecipeImageFile = null;
+        const titleEl = document.getElementById('recipe-title');
+        const stepsEl = document.getElementById('recipe-steps');
+        const idEl = document.getElementById('recipe-id');
+
         if (recipeId) {
             const recipe = appData.recipes.find(r => r.id === recipeId);
-            if (!recipe) return;
+            if (!recipe) {
+                console.warn(`Receta con id ${recipeId} no encontrada.`);
+                return;
+            }
+
             document.getElementById('recipe-modal-title').textContent = 'Editar Receta de Pizza';
-            document.getElementById('recipe-id').value = recipe.id;
-            document.getElementById('recipe-title').value = recipe.title;
-            document.getElementById('recipe-steps').value = recipe.steps;
-            
-            const imageUrl = recipe.image || DEFAULT_PLACEHOLDER;
-            recipeImagePreview.src = imageUrl;
-            recipeImagePreview.dataset.currentUrl = recipe.image || ""; 
-            
-            recipeRemoveImageBtn.style.display = recipe.image ? 'inline-flex' : 'none';
+            if (idEl) idEl.value = recipe.id;
+            if (titleEl) titleEl.value = recipe.title ?? '';
+            if (stepsEl) stepsEl.value = recipe.steps ?? '';
+
+            const imageUrl = (recipe.image && recipe.image.length) ? recipe.image : DEFAULT_PLACEHOLDER;
+            if (recipeImagePreview) {
+                recipeImagePreview.src = imageUrl;
+                recipeImagePreview.dataset.currentUrl = recipe.image || "";
+            }
+            if (recipeRemoveImageBtn) recipeRemoveImageBtn.style.display = recipe.image ? 'inline-flex' : 'none';
+
             renderCurrentRecipeIngredients(Array.isArray(recipe.ingredients) ? recipe.ingredients : []);
         } else {
+            // Nuevo
             document.getElementById('recipe-modal-title').textContent = 'Nueva Receta de Pizza';
-            recipeImagePreview.src = DEFAULT_PLACEHOLDER; 
-            recipeImagePreview.dataset.currentUrl = "";
-            recipeRemoveImageBtn.style.display = 'none';
+            if (idEl) idEl.value = '';
+            if (titleEl) titleEl.value = '';
+            if (stepsEl) stepsEl.value = '';
+            if (recipeImagePreview) {
+                recipeImagePreview.src = DEFAULT_PLACEHOLDER;
+                recipeImagePreview.dataset.currentUrl = "";
+            }
+            if (recipeRemoveImageBtn) recipeRemoveImageBtn.style.display = 'none';
             renderCurrentRecipeIngredients([]);
         }
+
         openModal(recipeModal);
     }
     function openInventoryModal(itemId = null) {
@@ -350,7 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             document.getElementById('event-modal-title').textContent = 'Nuevo Evento de Pizza';
             const now = new Date(Date.now() - (new Date().getTimezoneOffset() * 60000)).toISOString().substring(0, 16);
-            document.getElementById('event-date').value = now; 
+            document.getElementById('event-date').value = now;
+            applyDefaultEquipmentToChecklist();
         }
         openModal(eventModal);
     }
@@ -381,10 +426,10 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 appData = { ...defaultData, ...JSON.parse(savedData) };
                 if (!appData.events) appData.events = [];
-                if (!appData.equipment) appData.equipment = []; 
+                if (!appData.equipment) appData.equipment = [];
             } catch (e) {
                 console.error("Error al parsear datos antiguos. Iniciando con data por defecto.");
-                appData = defaultData;
+                appData = { ...defaultData };
             }
         }
     }
@@ -399,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Error: No se pudieron guardar los datos localmente. El almacenamiento podría estar lleno.");
         }
         
-        if (typeof pushToCloud === 'function' && currentUser) {
+        if (typeof pushToCloud === 'function' && currentUser && syncEnabled) {
             updateSyncStatus('syncing');
             pushToCloud(appData); 
         }
@@ -600,6 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appData.equipment = appData.equipment.map(item => item.id === id ? { ...item, ...formData } : item);
             } else {
                 formData.id = generateId();
+                formData.isAutoAdd = false;
                 appData.equipment.push(formData);
             }
             
@@ -851,16 +897,46 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'card equipment-card';
             card.dataset.id = item.id;
-            
+            const defaultFlag = item.isAutoAdd ? '<span class="equipment-default-flag">Se añade automáticamente</span>' : '';
+
             card.innerHTML = `
                 <img src="${escapeHTML(item.image) || DEFAULT_PLACEHOLDER}" alt="${escapeHTML(item.name)}" class="equipment-card-image">
                 <span class="equipment-card-name">${escapeHTML(item.name)}</span>
+                ${defaultFlag}
                 <div class="card-actions">
+                    <button class="btn btn-secondary btn-small" data-id="${item.id}" data-action="toggle-equipment-default">
+                        ${item.isAutoAdd ? 'Quitar de nuevos eventos' : 'Usar en nuevos eventos'}
+                    </button>
                     <button class="btn btn-light btn-small" data-id="${item.id}" data-action="edit-equipment">Editar</button>
                     <button class="btn btn-danger btn-small" data-id="${item.id}" data-action="delete-equipment">Borrar</button>
                 </div>
             `;
             equipmentList.appendChild(card);
+        });
+    }
+
+    function renderCurrentRecipeIngredients(ingredients = []) {
+        if (!currentRecipeIngredients) return;
+        if (!Array.isArray(ingredients) || ingredients.length === 0) {
+            currentRecipeIngredients.innerHTML = '<li class="placeholder-text-small" style="list-style-type: none;">Añade ingredientes usando el buscador de arriba.</li>';
+            return;
+        }
+
+        currentRecipeIngredients.innerHTML = '';
+        ingredients.forEach(item => {
+            const base = item?.inventoryId ? appData.inventory.find(i => i.id === item.inventoryId) : null;
+            const li = document.createElement('li');
+            li.className = 'list-item';
+            if (item?.inventoryId) li.dataset.inventoryId = item.inventoryId;
+            li.innerHTML = `
+                <span class="list-item-name"${item?.inventoryId ? ` data-inventory-id="${item.inventoryId}"` : ''}>${escapeHTML(base?.name || item?.name || 'Ingrediente pendiente')}</span>
+                <div class="ingredient-quantity-input">
+                    <input type="number" value="${item?.quantity ?? 0}" min="0" step="0.1">
+                    <input type="text" value="${escapeHTML(item?.unit || 'g')}">
+                </div>
+                <button type="button" class="btn btn-danger btn-small" data-action="delete-recipe-ingredient">&times;</button>
+            `;
+            currentRecipeIngredients.appendChild(li);
         });
     }
 
@@ -891,71 +967,101 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function applyDefaultEquipmentToChecklist() {
+        if (!Array.isArray(appData.equipment)) return;
+        const defaults = appData.equipment.filter(item => item.isAutoAdd);
+        defaults.forEach(item => addEquipmentItemToChecklist(item));
+    }
+
     // =================================================================
     // --- 6. GESTIÓN DE EVENTOS (Delegados y UI) --- (MODIFICADO)
     // =================================================================
 
     function setupEventListeners() {
-        // Delegate listener principal para editar/borrar
+        // Delegate listener principal para editar/borrar (más robusto: cualquier elemento con data-action)
         document.body.addEventListener('click', (e) => {
-            const target = e.target.closest('button[data-action]');
+            const target = e.target.closest('[data-action]');
             if (!target) return;
             const action = target.dataset.action;
             const id = target.closest('[data-id]')?.dataset.id;
 
             switch (action) {
                 // Editar Modales
-                case 'edit-recipe': openRecipeModal(id); break;
-                case 'edit-inventory': openInventoryModal(id); break;
-                case 'edit-diary': openDiaryModal(id); break;
-                case 'edit-dough-recipe':
-                    closeModal(); 
-                    setTimeout(() => openDoughRecipeModal(id), 350);
+                case 'edit-recipe':
+                    // Ensure an ID is found before attempting to open the modal for editing.
+                    if (id) {
+                        openRecipeModal(id);
+                    } else {
+                        console.warn('Action "edit-recipe" was triggered, but no "data-id" was found on the element or its parents.');
+                    }
                     break;
-                case 'edit-event': openEventModal(id); break; 
-                case 'edit-equipment': openEquipmentModal(id); break; // <--- EDITAR EQUIPO
+                case 'edit-inventory': if (id) openInventoryModal(id); break;
+                case 'edit-diary': if (id) openDiaryModal(id); break;
+                case 'edit-dough-recipe':
+                    closeModal();
+                    setTimeout(() => { if (id) openDoughRecipeModal(id); }, 350);
+                    break;
+                case 'edit-event': if (id) openEventModal(id); break;
+                case 'edit-equipment': if (id) openEquipmentModal(id); break;
 
                 // Borrar
                 case 'delete-recipe':
+                    if (!id) return;
                     if (confirm('¿Borrar esta receta?')) {
-                        // TODO: Borrar imagen de Storage si es necesario
                         appData.recipes = appData.recipes.filter(r => r.id !== id);
-                        saveData(); 
+                        saveData();
                         renderAll();
                     }
                     break;
                 case 'delete-inventory':
+                    if (!id) return;
                     if (confirm('¿Borrar este ingrediente base?')) {
                         appData.inventory = appData.inventory.filter(i => i.id !== id);
-                        saveData(); 
+                        saveData();
                         renderAll();
                     }
                     break;
                 case 'delete-diary':
+                    if (!id) return;
                     if (confirm('¿Borrar esta entrada?')) {
                         appData.diary = appData.diary.filter(d => d.id !== id);
-                        saveData(); 
+                        saveData();
                         renderAll();
                     }
                     break;
-                case 'delete-event': 
+                case 'delete-event':
+                    if (!id) return;
                     if (confirm('¿Borrar este evento?')) {
                         appData.events = appData.events.filter(e => e.id !== id);
-                        saveData(); 
+                        saveData();
                         renderAll();
                     }
                     break;
-                case 'delete-equipment': 
+                case 'delete-equipment':
+                    if (!id) return;
                     if (confirm('¿Borrar este item de equipo predefinido?')) {
                         appData.equipment = appData.equipment.filter(e => e.id !== id);
                         saveData();
                         renderAll();
                     }
                     break;
+                case 'toggle-equipment-default':
+                    if (!id) break;
+                    {
+                        const equipment = appData.equipment.find(item => item.id === id);
+                        if (!equipment) break;
+                        equipment.isAutoAdd = !equipment.isAutoAdd;
+                        saveData();
+                        renderEquipment();
+                    }
+                    break;
                 case 'delete-recipe-ingredient':
-                    target.closest('li.list-item').remove();
-                    if (currentRecipeIngredients.children.length === 0) {
-                        currentRecipeIngredients.innerHTML = '<li class="placeholder-text-small" ...>Añade ingredientes...</li>';
+                    {
+                        const li = target.closest('li.list-item');
+                        if (li) li.remove();
+                        if (currentRecipeIngredients.children.length === 0) {
+                            currentRecipeIngredients.innerHTML = '<li class="placeholder-text-small" ...>Añade ingredientes...</li>';
+                        }
                     }
                     break;
             }
@@ -965,9 +1071,25 @@ document.addEventListener('DOMContentLoaded', () => {
         addChecklistItemBtn.addEventListener('click', () => {
             const itemText = newChecklistItemInput.value.trim();
             if (!itemText) return;
-            
+
             if (eventChecklist.querySelector('.placeholder-text-small')) {
                 eventChecklist.innerHTML = '';
+            }
+
+            const existingEquipment = Array.isArray(appData.equipment)
+                ? appData.equipment.find(eq => eq.name.toLowerCase() === itemText.toLowerCase())
+                : null;
+            if (!existingEquipment) {
+                if (!Array.isArray(appData.equipment)) appData.equipment = [];
+                appData.equipment.push({
+                    id: generateId(),
+                    name: itemText,
+                    image: DEFAULT_PLACEHOLDER,
+                    isAutoAdd: false
+                });
+                appData.equipment.sort((a, b) => a.name.localeCompare(b.name));
+                renderEquipment();
+                saveData();
             }
 
             const li = document.createElement('li');
@@ -1047,261 +1169,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function addEquipmentItemToChecklist(item) {
-        if (eventChecklist.querySelector('.placeholder-text-small')) {
-            eventChecklist.innerHTML = '';
-        }
-        // Evitar duplicados simples por nombre
-        const existingItems = Array.from(eventChecklist.querySelectorAll('.list-item-name')).map(el => el.textContent.trim());
-        if (existingItems.includes(item.name)) return;
-        
-        const li = document.createElement('li');
-        li.className = 'list-item';
-        li.innerHTML = `
-            <label class="checklist-label">
-                <input type="checkbox" data-action="toggle-checklist-item">
-                <span class="list-item-name">${escapeHTML(item.name)}</span>
-            </label>
-            <button type="button" class="btn btn-danger btn-icon-only btn-small" data-action="delete-checklist-item" title="Borrar Item">&times;</button>
-        `;
-        eventChecklist.appendChild(li);
-    }
-    
-    // --- NUEVO: Control para el total de pizzas y el selector de masa ---
-    function setupShoppingListControls() {
-        shoppingDoughSelect.addEventListener('change', () => {
-            const id = shoppingDoughSelect.value;
-            if (!id) {
-                shoppingDoughDetails.style.display = 'none';
-                return;
-            }
-            const recipe = appData.doughRecipes.find(r => r.id === id);
-            if (!recipe) {
-                shoppingDoughDetails.style.display = 'none';
-                return;
-            }
-            // Mostrar detalles
-            shoppingDoughDetails.style.display = 'flex';
-            shoppingDoughDetails.innerHTML = `
-                <div class="details-grid-item"><strong>${escapeHTML(String(recipe.hydration))}%</strong><span>Hidratación</span></div>
-                <div class="details-grid-item"><strong>${escapeHTML(String(recipe.salt))}%</strong><span>Sal</span></div>
-                <div class="details-grid-item"><strong>${escapeHTML(String(recipe.yeast))}%</strong><span>Levadura</span></div>
-            `;
-        });
-        
-        // Lógica para actualizar el total de pizzas al cambiar un input
-        shoppingListBuilder.addEventListener('input', updatePizzaTotal);
-    }
-
-    // NUEVO: Función para actualizar el contador de pizzas
-    function updatePizzaTotal() {
-        let total = 0;
-        shoppingListBuilder.querySelectorAll('.shopping-recipe-row input').forEach(input => {
-            total += parseFloat(input.value) || 0;
-        });
-        shoppingPizzaTotal.textContent = `Total de Pizzas: ${total}`;
-        return total;
-    }
-
-
-    function loadDoughRecipeToCalculator() {
-        const id = doughRecipeSelect.value;
-        if (!id) return;
-        const recipe = appData.doughRecipes.find(r => r.id === id);
-        if (!recipe) return;
-        document.getElementById('calc-hidratacion').value = recipe.hydration;
-        document.getElementById('calc-sal').value = recipe.salt;
-        document.getElementById('calc-levadura').value = recipe.yeast;
-    }
-    function deleteDoughRecipe() {
-        const id = doughRecipeSelect.value;
-        if (!id) return;
-        if (confirm(`¿Seguro que quieres borrar la receta "${doughRecipeSelect.options[doughRecipeSelect.selectedIndex].text}"?`)) {
-            appData.doughRecipes = appData.doughRecipes.filter(r => r.id !== id);
-            saveData(); 
-            renderDoughRecipesSelect();
-        }
-    }
-    function setupIngredientSearch() {
-        ingredientSearch.addEventListener('keyup', (e) => {
-            const query = e.target.value.toLowerCase();
-            if (query.length < 1) {
-                ingredientSearchResults.style.display = 'none';
-                return;
-            }
-            const results = appData.inventory.filter(item => item.name.toLowerCase().includes(query));
-            ingredientSearchResults.innerHTML = '';
-            
-            if (results.length > 0) {
-                results.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'search-result-item';
-                    div.dataset.id = item.id;
-                    div.innerHTML = `<img src="${escapeHTML(item.image) || DEFAULT_PLACEHOLDER}" alt=""><span>${escapeHTML(item.name)}</span>`;
-                    ingredientSearchResults.appendChild(div);
+    function setupEquipmentPresetsControl() {
+        if (!loadEquipmentPresetsBtn) return;
+        loadEquipmentPresetsBtn.addEventListener('click', () => {
+            if (!Array.isArray(appData.equipment)) appData.equipment = [];
+            let added = 0;
+            DEFAULT_EQUIPMENT_PRESETS.forEach(preset => {
+                const existing = appData.equipment.find(item => item.name.toLowerCase() === preset.name.toLowerCase());
+                if (existing) {
+                    if (!existing.isAutoAdd) {
+                        existing.isAutoAdd = true;
+                        added++;
+                    }
+                    return;
+                }
+                appData.equipment.push({
+                    id: generateId(),
+                    name: preset.name,
+                    image: preset.image,
+                    isAutoAdd: true
                 });
-                ingredientSearchResults.style.display = 'block';
-            } else {
-                ingredientSearchResults.style.display = 'none';
-            }
-        });
-        ingredientSearchResults.addEventListener('click', (e) => {
-            const itemEl = e.target.closest('.search-result-item');
-            if (!itemEl) return;
-            const id = itemEl.dataset.id;
-            if (currentRecipeIngredients.querySelector(`li[data-inventory-id="${id}"]`)) {
-                ingredientSearch.value = '';
-                ingredientSearchResults.style.display = 'none';
-                return;
-            }
-            if (currentRecipeIngredients.querySelector('.placeholder-text-small')) {
-                currentRecipeIngredients.innerHTML = '';
-            }
-            const base = appData.inventory.find(i => i.id === id);
-            if (base) {
-                const li = document.createElement('li');
-                li.className = 'list-item';
-                li.dataset.inventoryId = id;
-                li.innerHTML = `
-                    <span class="list-item-name" data-inventory-id="${id}">${escapeHTML(base.name)}</span>
-                    <div class="ingredient-quantity-input">
-                        <input type="number" value="100" min="0" step="0.1">
-                        <input type="text" value="g">
-                    </div>
-                    <button type="button" class="btn btn-danger btn-small" data-action="delete-recipe-ingredient">&times;</button>
-                `;
-                currentRecipeIngredients.appendChild(li);
-            }
-            ingredientSearch.value = '';
-            ingredientSearchResults.style.display = 'none';
-        });
-    }
-
-    function setupTooltipEvents() {
-        let currentTarget = null;
-        const shoppingTab = document.getElementById('compras');
-        document.body.addEventListener('mouseover', (e) => {
-            let target, id, item;
-            if (document.getElementById('recipe-modal').contains(e.target)) {
-                target = e.target.closest('[data-inventory-id]');
-                if (!target || target === currentTarget) return;
-                id = target.dataset.inventoryId;
-                item = appData.inventory.find(i => i.id === id);
-            } else if (shoppingTab.contains(e.target)) {
-                target = e.target.closest('[data-recipe-id]');
-                if (!target || target === currentTarget) return;
-                id = target.dataset.recipeId;
-                item = appData.recipes.find(r => r.id === id);
-            } else {
-                if (ingredientTooltip.classList.contains('visible')) {
-                    hideIngredientTooltip();
-                }
-                return;
-            }
-            if (!item) return;
-            currentTarget = target;
-            ingredientTooltip.innerHTML = `
-                <img src="${escapeHTML(item.image) || DEFAULT_PLACEHOLDER}" alt="">
-                <span>${escapeHTML(item.name || item.title)}</span>
-            `;
-            positionTooltip(e);
-            ingredientTooltip.classList.add('visible');
-        });
-        document.body.addEventListener('mouseout', (e) => {
-            if (e.target.closest('[data-inventory-id]') || e.target.closest('[data-recipe-id]')) {
-                 hideIngredientTooltip();
-                 currentTarget = null;
-            }
-        });
-        document.getElementById('recipe-modal').addEventListener('scroll', () => positionTooltip(null, document.getElementById('recipe-modal')), { passive: true });
-        shoppingTab.addEventListener('scroll', () => positionTooltip(null, shoppingTab), { passive: true });
-    }
-    function positionTooltip(e, container = null) {
-        if (!modalContainer.classList.contains('visible') && !container) {
-            hideIngredientTooltip();
-            return;
-        }
-        let referenceRect;
-        if (container) {
-            referenceRect = container.getBoundingClientRect();
-        } else {
-            referenceRect = document.getElementById('recipe-modal').style.display === 'block' 
-                ? document.getElementById('recipe-modal').getBoundingClientRect() 
-                : document.getElementById('compras').querySelector('.form-container').getBoundingClientRect();
-        }
-        if (!referenceRect) return;
-        const containerRect = modalContainer.classList.contains('visible') 
-            ? modalContainer.getBoundingClientRect()
-            : document.body.getBoundingClientRect();
-        ingredientTooltip.style.left = `${referenceRect.right + 10}px`;
-        ingredientTooltip.style.top = `${referenceRect.top + (referenceRect.height / 2)}px`;
-        if (referenceRect.right + 10 + 250 > containerRect.width) {
-             hideIngredientTooltip();
-        } else {
-            if (ingredientTooltip.classList.contains('visible')) {
-                ingredientTooltip.style.display = 'flex';
-            }
-        }
-    }
-    function hideIngredientTooltip() {
-        ingredientTooltip.classList.remove('visible');
-    }
-
-    function setupImageUpload() {
-        recipeImageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            if (file.size > 10 * 1024 * 1024) { // Límite de 10MB para el original
-                alert('La imagen es muy grande (Máx 10MB). Se comprimirá.');
-            }
-
-            compressImage(file, 800, 0.7, (compressedBlob) => {
-                currentRecipeImageFile = compressedBlob; // Guardar el Blob (archivo)
-                recipeImagePreview.src = URL.createObjectURL(compressedBlob); // Mostrar preview
-                recipeRemoveImageBtn.style.display = 'inline-flex';
+                added++;
             });
-        });
-        recipeRemoveImageBtn.addEventListener('click', () => {
-            currentRecipeImageFile = null;
-            recipeImageInput.value = '';
-            recipeImagePreview.src = DEFAULT_PLACEHOLDER;
-            recipeRemoveImageBtn.style.display = 'none';
+            if (added === 0) {
+                alert('Todos los elementos sugeridos ya están disponibles.');
+                return;
+            }
+            appData.equipment.sort((a, b) => a.name.localeCompare(b.name));
+            saveData();
+            renderEquipment();
+            alert('Se importaron los elementos sugeridos. Puedes editarlos o desactivarlos.');
         });
     }
-
-    function compressImage(file, maxWidth, quality, callback) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-                let width = img.width;
-                let height = img.height;
-
-                if (width > maxWidth) {
-                    height = (maxWidth / width) * height;
-                    width = maxWidth;
-                }
-
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                canvas.toBlob((blob) => {
-                    callback(blob);
-                }, 'image/jpeg', quality);
-            };
-            img.onerror = () => {
-                console.error("No se pudo cargar la imagen para comprimir.");
-                alert("Error: El archivo seleccionado no parece ser una imagen válida.");
-            };
-        };
-        reader.onerror = (error) => console.error("Error leyendo archivo:", error);
-        reader.readAsDataURL(file); 
-    }
-
 
     // =================================================================
     // --- 7. LÓGICA DE CALCULADORA Y COMPRAS --- (MODIFICADO)
@@ -1480,6 +1379,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let totalQtyInBaseUnit = 0;
             const priceUnit = baseItem.priceUnit ? baseItem.priceUnit.toLowerCase() : 'g';
             
+            
             // Consolidar y convertir unidades para mostrar
             const consolidated = {};
             for (const unit in units) {
@@ -1508,6 +1408,7 @@ document.addEventListener('DOMContentLoaded', () => {
             totalCost = totalQtyInBaseUnit * (baseItem.price || 0);
             grandTotalCost += totalCost;
 
+           
             const li = document.createElement('li');
             li.className = 'list-item';
             li.innerHTML = `
@@ -1538,7 +1439,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function convertUnit(quantity, fromUnit, toUnit) {
         if (!quantity || !fromUnit || !toUnit) return null;
         const from = fromUnit.toLowerCase();
-        const to = toUnit.toLowerCase();
+               const to = toUnit.toLowerCase();
         if (from === to) return quantity;
         const conversions = {
             'g': { 'kg': q => q / 1000 },
@@ -1622,88 +1523,94 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 9. Lógica de Autenticación y Sincronización (UI) ---
     // =================================================================
 
+    function setupAllEventListeners() {
+        setupModalControls();
+        setupFormHandlers();
+        setupEventListeners();
+        setupAuthButtons();
+        setupLoginButton();
+    }
+
     function setupAuthButtons() {
-        loginBtn.addEventListener('click', () => {
-            if (typeof signInWithGoogle === 'function') {
-                signInWithGoogle();
+        if (userAvatar) {
+            userAvatar.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sessionMenu.classList.toggle('visible');
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!sessionMenu.contains(e.target) && !userAvatar.contains(e.target)) {
+                sessionMenu.classList.remove('visible');
             }
         });
-        logoutBtn.addEventListener('click', () => {
-            if (typeof signOut === 'function') {
-                signOut();
-            }
-        });
-        syncNowBtn.addEventListener('click', async () => {
-            if (typeof pullFromCloud === 'function') {
-                updateSyncStatus('syncing');
-                const cloudData = await pullFromCloud();
-                if (cloudData) {
-                    handleCloudUpdate(cloudData);
-                } else {
-                    updateSyncStatus(true);
+
+        if (syncToggle) {
+            syncToggle.addEventListener('change', () => {
+                syncEnabled = syncToggle.checked;
+                console.log(`Sincronización ${syncEnabled ? 'activada' : 'desactivada'}`);
+                if (syncEnabled && currentUser) {
+                    syncNowBtn.click();
                 }
-            }
-        });
-    }
+            });
+        }
 
-    function handleUserLogin(user) {
-        // Cargar datos locales ANTES de la sincronización
-        loadData();
-        // Renderizar la app con los datos locales
-        renderAll();
-
-        // MOSTRAR APP / OCULTAR MURALLA
-        document.getElementById('login-wall').style.display = 'none';
-        document.getElementById('app-container-main').style.display = 'block';
-
-        // Mostrar el perfil de usuario
-        userProfileDiv.style.display = 'flex';
-        loginBtn.style.display = 'none'; // Ocultar botón de login principal
-        
-        userAvatar.src = user.photoURL || DEFAULT_PLACEHOLDER;
-        userEmail.textContent = user.email;
-        updateSyncStatus(null); // Limpiar estado
-    }
-
-    function handleUserLogout() {
-        // Ocultar perfil
-        userProfileDiv.style.display = 'none';
-        loginBtn.style.display = 'inline-flex'; // Mostrar botón de login principal
-        userAvatar.src = '';
-        userEmail.textContent = '';
-        
-        // MOSTRAR MURALLA / OCULTAR APP
-        document.getElementById('login-wall').style.display = 'flex';
-        document.getElementById('app-container-main').style.display = 'none';
-
-        // Limpiar datos locales
-        localStorage.removeItem(APP_STORAGE_KEY);
-        appData = { ...defaultData };
-        renderAll(); // Renderizará placeholders vacíos (porque la app está oculta)
-    }
-
-    function updateSyncStatus(status) {
-        syncNowBtn.classList.remove('syncing', 'synced', 'error');
-        if (status === 'syncing') {
-            syncNowBtn.classList.add('syncing');
-        } else if (status === true) {
-            syncNowBtn.classList.add('synced');
-        } else if (status === false) {
-            syncNowBtn.classList.add('error');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                if (typeof signOut === 'function') {
+                    signOut();
+                }
+            });
+        }
+        if (syncNowBtn) {
+            syncNowBtn.addEventListener('click', async () => {
+                if (typeof pullFromCloud === 'function') {
+                    updateSyncStatus('syncing');
+                    const cloudData = await pullFromCloud();
+                    if (cloudData) {
+                        handleCloudUpdate(cloudData);
+                    } else {
+                        // Si no hay datos en la nube, intentar subir los locales si existen
+                        const localData = getLocalData();
+                        if (localData && localData.lastModified > 0) {
+                            await pushToCloud(localData);
+                        }
+                        updateSyncStatus(true);
+                    }
+                }
+            });
         }
     }
 
-
-    // --- Ejecutar Inicialización ---
-    init();
-
-    // --- Exponer funciones globales para que firebase-sync.js las vea ---
-    window.getLocalData = getLocalData;
-    window.handleCloudUpdate = handleCloudUpdate;
-    window.updateSyncStatus = updateSyncStatus;
-    // Exponer la función de subida de archivos
-    if (typeof uploadFileToStorage === 'function') {
-        window.uploadFileToStorage = uploadFileToStorage;
+    function setupLoginButton() {
+        if (loginBtn) {
+            loginBtn.addEventListener('click', () => {
+                if (typeof signInWithGoogle === 'function') {
+                    signInWithGoogle();
+                }
+            });
+        }
     }
 
+    function handleUserLogin(user) {
+        // Esta función ahora es más simple. Solo actualiza la UI del usuario.
+        // La carga de datos se gestiona en firebase-sync.js
+        startApp();
+        if (userProfileDiv) userProfileDiv.style.display = 'block';
+        if (userAvatar) userAvatar.src = user.photoURL || DEFAULT_PLACEHOLDER;
+        if (userEmail) userEmail.textContent = user.email;
+    }
+
+    function handleUserLogout() {
+        if (userProfileDiv) userProfileDiv.style.display = 'none';
+        if (sessionMenu) sessionMenu.classList.remove('visible');
+        if (loginBtn) loginBtn.style.display = 'inline-flex';
+        if (userAvatar) userAvatar.src = '';
+        if (userEmail) userEmail.textContent = '';
+        if (typeof updateSyncStatus === 'function') updateSyncStatus(null);
+    }
+
+    // Inicialización
+    setupAllEventListeners(); // <-- MOVIDO: Se configuran todos los listeners al inicio.
+    init();
 });

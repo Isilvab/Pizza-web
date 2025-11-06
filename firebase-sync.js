@@ -36,38 +36,48 @@ function showAppScreen() {
     appContainer.style.display = 'block';
 }
 
-
 // --- 1. Inicialización y Autenticación ---
-
-/**
- * Inicializa el listener de estado de autenticación de Firebase.
- */
 function initFirebaseSync(onLogin, onLogout) {
-  if (typeof auth === 'undefined' || typeof storage === 'undefined') {
+  // CORRECCIÓN CRÍTICA: Se añade la comprobación de 'firestore'.
+  // Si 'firestore' no está definido, el código fallaba más adelante, deteniendo la app.
+  if (typeof auth === 'undefined' || typeof firestore === 'undefined' || typeof storage === 'undefined') {
     showLoginScreen("Error al cargar Firebase.", "Scripts no cargados o error de configuración.");
+    console.error("Error crítico: auth, firestore, o storage no están definidos globalmente.");
     return;
   }
   
   // Mostrar mensaje de carga inicial
   showLoginScreen("Verificando sesión...", null);
-  loginBtn.style.display = "none";
-  
-  // 1. Manejar el resultado del redireccionamiento PRIMERO
+  loginBtn.style.display = "inline-flex";
+
+  let redirectProcessing = true;
+  const loginFallbackTimer = setTimeout(() => {
+    if (!auth.currentUser) {
+      console.warn("Sin respuesta de Firebase tras el redirect. Mostrando pantalla de login.");
+      showLoginScreen();
+    }
+  }, 4000);
+
   auth.getRedirectResult()
     .then(() => {
-        // El onAuthStateChanged se disparará después, no hacemos nada aquí
+        // no hacemos nada aquí; la onAuthStateChanged se ejecutará según sea necesario
     })
     .catch((error) => {
         console.error("Error al retornar de Google:", error);
-        // Si hay un error al volver, lo mostramos en la muralla
         showLoginScreen("Error al iniciar sesión.", error.message);
+    })
+    .finally(() => {
+        redirectProcessing = false;
+        if (!auth.currentUser) {
+            showLoginScreen();
+        }
     });
 
-  // 2. Listener que se dispara cuando el usuario inicia o cierra sesión
   auth.onAuthStateChanged(async (user) => {
+    clearTimeout(loginFallbackTimer);
     if (user) {
       // --- Comprobación de Acceso ---
-      const isAllowed = user.email.toLowerCase() === ALLOWED_EMAIL.toLowerCase();
+      const isAllowed = user.email && user.email.toLowerCase() === ALLOWED_EMAIL.toLowerCase();
 
       if (!isAllowed) {
         console.warn(`Intento de acceso denegado para: ${user.email}`);
@@ -83,11 +93,38 @@ function initFirebaseSync(onLogin, onLogout) {
       
       console.log("Usuario autorizado conectado:", currentUser.email);
       
-      showAppScreen(); // Mostrar la app antes de la sincronización
-      
-      onLogin(user); // Cargar datos locales y actualizar UI
+      // --- FLUJO DE CARGA DEFINITIVO ---
+      // 1. Cargar datos locales INMEDIATAMENTE para que la UI no esté vacía.
+      if (typeof loadData === 'function') {
+        loadData();
+      }
+      if (typeof renderAll === 'function') {
+        renderAll();
+      }
 
-      await pullFromCloud();
+      // 2. Mostrar la app y notificar a app.js que el usuario está logueado.
+      showAppScreen();
+      if (typeof onLogin === 'function') onLogin(user);
+
+      // 3. Intentar sincronizar con la nube en segundo plano.
+      (async () => {
+        try {
+          const cloudData = await pullFromCloud();
+          // Si no había datos en la nube, intentar subir los locales si existen.
+          if (!cloudData) {
+            const localData = getLocalData ? getLocalData() : null;
+            if (localData && localData.lastModified > 0) {
+              console.log("No hay datos en la nube, subiendo los locales existentes.");
+              await pushToCloud(localData);
+            }
+          }
+        } catch (error) {
+          console.error("Error en la sincronización inicial en segundo plano:", error);
+          // No se muestra alerta para no interrumpir al usuario, ya tiene los datos locales.
+        }
+      })();
+
+      // 4. Iniciar el listener para cambios en tiempo real.
       startRealtimeListener();
 
     } else {
@@ -97,9 +134,8 @@ function initFirebaseSync(onLogin, onLogout) {
       dbUserRef = null;
       storageRef = null;
       
-      // Si no estamos en medio de un proceso de redirección, mostramos el login.
-      // Esta es la parte que evita el bucle/flash si la autenticación ya falló o terminó.
-      if (!auth.getRedirectResult().pending) {
+      // Mostrar login salvo que aún estemos procesando el redirect
+      if (!redirectProcessing) {
           showLoginScreen();
       }
 
@@ -108,20 +144,19 @@ function initFirebaseSync(onLogin, onLogout) {
         unsubscribeSnapshot = null;
       }
       
-      onLogout(); // Limpiar datos locales
+      if (typeof onLogout === 'function') onLogout(); // Limpiar datos locales
     }
   });
 }
 
 /**
- * Inicia el proceso de login con Google (usando Redirect - SOLUCIÓN COOP)
+ * Inicia el proceso de login with Google (usando Redirect - SOLUCIÓN COOP)
  */
 function signInWithGoogle() {
   loginError.textContent = 'Redirigiendo a Google...';
   loginError.style.display = 'block';
 
   if (auth && googleProvider) {
-    // Usamos Redirect para evitar los bloqueos de ventana Pop-up (COOP/COEP)
     auth.signInWithRedirect(googleProvider)
       .catch((error) => {
         console.error("Error al iniciar el proceso de redirección:", error);
@@ -161,13 +196,13 @@ async function pushToCloud(localData) {
     }
     await dbUserRef.set(localData, { merge: true });
     console.log("Sincronización (Push) completada.");
-    updateSyncStatus(true); 
+    if (typeof window.updateSyncStatus === 'function') window.updateSyncStatus(true);
   } catch (error) {
     console.error("Error subiendo datos (Push):", error);
     if (error.code === 'permission-denied') {
         alert("ERROR DE PERMISOS (PUSH)\n\nLas reglas de Firestore rechazaron la escritura. Asegúrate de que tu email esté correcto en 'firestore.rules' y que hayas publicado las reglas.");
     }
-    updateSyncStatus(false); 
+    if (typeof window.updateSyncStatus === 'function') window.updateSyncStatus(false);
   }
   isSyncing = false;
 }
@@ -182,7 +217,7 @@ async function pullFromCloud() {
     const doc = await dbUserRef.get();
     if (!doc.exists) {
       console.log("No hay datos en la nube. Subiendo datos locales.");
-      const localData = getLocalData(); 
+      const localData = getLocalData ? getLocalData() : null; 
       if (localData && localData.lastModified) {
         await pushToCloud(localData);
       }
@@ -190,13 +225,17 @@ async function pullFromCloud() {
       return null;
     }
     const cloudData = doc.data();
-    const localData = getLocalData(); 
+    const localData = getLocalData ? getLocalData() : { lastModified: 0 }; 
     const cloudTimestamp = cloudData.lastModified || 0;
     const localTimestamp = localData.lastModified || 0;
     console.log(`Timestamp Nube: ${new Date(cloudTimestamp).toLocaleString()}`);
     console.log(`Timestamp Local: ${new Date(localTimestamp).toLocaleString()}`);
     if (cloudTimestamp > localTimestamp) {
       console.log("Datos de la nube son más recientes. Actualizando local.");
+      if (typeof handleCloudUpdate === 'function') {
+        handleCloudUpdate(cloudData);
+      }
+      if (typeof window.updateSyncStatus === 'function') window.updateSyncStatus(true);
       isSyncing = false;
       return cloudData; 
     } else if (localTimestamp > cloudTimestamp) {
@@ -206,16 +245,23 @@ async function pullFromCloud() {
       return null;
     } else {
       console.log("Datos locales y de la nube están sincronizados.");
+      if (typeof window.updateSyncStatus === 'function') window.updateSyncStatus(true);
       isSyncing = false;
       return null;
     }
   } catch (error) {
     console.error("Error descargando datos (Pull):", error);
-    if (error.code === 'permission-denied') {
-        alert("ERROR DE PERMISOS (PULL)\n\nLas reglas de Firestore rechazaron la lectura. Esto casi siempre significa que el email en tus 'firestore.rules' (en la web de Firebase) no coincide con el email con el que iniciaste sesión.");
-        signOut(); // Forzar cierre de sesión porque no tiene permisos
+    if (auth?.currentUser && error?.message) {
+        alert(error.message);
     }
-    updateSyncStatus(false);
+    if (error.code === 'permission-denied') {
+        console.warn("Firestore rechazó la lectura para el usuario actual.");
+        alert("No tienes permiso para leer datos en la nube. Revisa las reglas de Firestore o continúa usando tus datos locales.");
+        isSyncing = false;
+        if (typeof window.updateSyncStatus === 'function') window.updateSyncStatus(false);
+        return null;
+    }
+    if (typeof window.updateSyncStatus === 'function') window.updateSyncStatus(false);
     isSyncing = false;
     return null;
   }
@@ -239,12 +285,12 @@ function startRealtimeListener() {
         return;
       }
       const cloudData = doc.data();
-      const localData = getLocalData(); 
+      const localData = getLocalData ? getLocalData() : { lastModified: 0 }; 
       const cloudTimestamp = cloudData.lastModified || 0;
       const localTimestamp = localData.lastModified || 0;
       if (cloudTimestamp > localTimestamp) {
         console.log("Snapshot es más reciente. Actualizando local.");
-        handleCloudUpdate(cloudData); 
+        if (typeof handleCloudUpdate === 'function') handleCloudUpdate(cloudData);
       }
     },
     (error) => {

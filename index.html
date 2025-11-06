@@ -67,10 +67,25 @@
         
         <div class="firebase-auth-container">
             <div id="user-profile" style="display: none;">
-                <img id="user-avatar" src="" alt="Avatar">
-                <span id="user-email"></span>
-                <button id="sync-now-btn" class="btn btn-secondary btn-small">Sincronizar</button>
-                <button id="logout-btn" class="btn btn-danger btn-small">Salir</button>
+                <img id="user-avatar" src="" alt="Avatar" tabindex="0">
+                <div id="session-menu" class="session-menu">
+                    <div class="session-menu-header">
+                        <span id="user-email-menu"></span>
+                    </div>
+                    <div class="session-menu-item">
+                        <label for="sync-toggle">Sincronización en la nube</label>
+                        <label class="switch">
+                            <input type="checkbox" id="sync-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="session-menu-item">
+                        <button id="sync-now-btn" class="btn btn-secondary btn-small">Sincronizar ahora</button>
+                    </div>
+                    <div class="session-menu-footer">
+                        <button id="logout-btn" class="btn btn-danger btn-small">Cerrar Sesión</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -130,6 +145,7 @@
                     <button id="add-equipment-btn" class="btn btn-primary"><span class="btn-icon">+</span> Añadir Item</button>
                 </header>
                 <p class="subtitle">Crea y gestiona una base de datos de equipo y utensilios para usarlos en tus Checklists de Eventos.</p>
+                <button id="load-equipment-presets-btn" class="btn btn-light btn-small" style="margin-bottom: 1rem;">Importar lista sugerida</button>
                 <div id="equipment-list" class="card-grid equipment-grid">
                     </div>
             </section>
@@ -207,9 +223,13 @@
     
     <div id="ingredient-tooltip" class="tooltip"></div>
 
-    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
 
-    <script src="firebase-sync.js"></script> 
+    <script src="firebase-config.js"></script>
+    <script src="firebase-sync.js"></script>
     <script src="assets/app.js"></script>
 </body>
 </html>

@@ -5,17 +5,19 @@ const firebaseConfig = {
   apiKey: "AIzaSyDw468VKxdwG_nRPaWWfhJa3sFknd6hCGg",
   authDomain: "pizzas-bato.firebaseapp.com",
   projectId: "pizzas-bato",
-  storageBucket: "pizzas-bato.firebasestorage.app",
+  storageBucket: "pizzas-bato.appspot.com",
   messagingSenderId: "68252600633",
   appId: "1:68252600633:web:f02837f97ce09959c880e8",
   measurementId: "G-1LQCD80BNC"
 };
 
 // --- Inicialización de Firebase ---
-let app;
-let auth;
-let firestore;
-let googleProvider;
+// Se declaran en el ámbito global para que otros scripts puedan acceder a ellas.
+var app;
+var auth;
+var firestore;
+var storage;
+var googleProvider;
 
 try {
   // Inicializa la app de Firebase
@@ -24,17 +26,10 @@ try {
   // Inicializa los servicios que usaremos
   auth = firebase.auth();
   firestore = firebase.firestore();
-  
-  // Configura el proveedor de Google para el login
+  storage = firebase.storage(); 
   googleProvider = new firebase.auth.GoogleAuthProvider();
-  
-  // (Opcional) Habilitar la persistencia offline de Firestore.
-  // Esto permite que Firestore maneje su propia caché offline,
-  // pero nosotros usaremos un enfoque manual (localStorage) para control total.
-  // Si quisieras que Firestore lo maneje, descomenta la siguiente línea:
-  // firebase.firestore().enablePersistence();
 
-  console.log("Firebase inicializado correctamente.");
+  console.log("Firebase inicializado correctamente (auth, firestore, storage).");
 
 } catch (error) {
   console.error("Error al inicializar Firebase:", error);
