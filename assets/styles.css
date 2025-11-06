@@ -1,0 +1,1069 @@
+/* --- Variables CSS (Modo Claro y Oscuro) --- */
+:root {
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    
+    /* Modo Claro */
+    --color-bg: #f8f9fa;
+    --color-bg-alt: #ffffff;
+    --color-text: #212529;
+    --color-text-alt: #6c757d;
+    --color-border: #e9ecef;
+    --color-primary: #e63946;
+    --color-primary-hover: #d62828;
+    --color-secondary: #007bff;
+    --color-secondary-hover: #0069d9;
+    --color-warning: #ffc107;
+    --color-warning-hover: #e0a800;
+    --color-danger: #dc3545;
+    --color-danger-hover: #c82333;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.03);
+    --shadow-md: 0 4px 10px rgba(0,0,0,0.05);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.1);
+    --icon-filter: grayscale(1) opacity(0.6);
+    --icon-filter-active: none;
+    --border-radius: 12px;
+}
+
+[data-theme="dark"] {
+    --color-bg: #1c1e21;
+    --color-bg-alt: #2a2c30;
+    --color-text: #e4e6eb;
+    --color-text-alt: #b0b3b8;
+    --color-border: #3a3b3c;
+    --color-primary: #e63946;
+    --color-primary-hover: #d62828;
+    --color-secondary: #0084ff;
+    --color-secondary-hover: #0073e0;
+    --color-danger: #ff5252;
+    --color-danger-hover: #ff2d2d;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 10px rgba(0,0,0,0.25);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.3);
+    --icon-filter: none;
+    --icon-filter-active: none;
+}
+
+/* --- Reseteo Básico --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+html { scroll-behavior: smooth; }
+body {
+    font-family: var(--font-family);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-size: 16px;
+    line-height: 1.6;
+}
+h1, h2, h3, h4, h5, h6 {
+    color: var(--color-text);
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+    font-weight: 600;
+}
+p { margin-bottom: 1rem; color: var(--color-text-alt); }
+p:last-child { margin-bottom: 0; }
+a { color: var(--color-primary); text-decoration: none; }
+img { max-width: 100%; height: auto; }
+ul { list-style: none; }
+hr {
+    border: none;
+    height: 1px;
+    background-color: var(--color-border);
+    margin: 1.5rem 0;
+}
+
+/* --- Muralla de Login --- */
+#login-wall {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+    text-align: center;
+    padding: 2rem;
+}
+.login-box {
+    background-color: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 3rem;
+    box-shadow: var(--shadow-lg);
+    max-width: 450px;
+}
+.login-box h1 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+.login-box p {
+    font-size: 1.1rem;
+    color: var(--color-text-alt);
+    margin-bottom: 1.5rem;
+}
+#login-error-message {
+    color: var(--color-danger);
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+}
+
+/* --- Estructura Principal --- */
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    padding-bottom: 110px;
+}
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 1rem;
+}
+.content-header h2 { margin: 0; }
+.subtitle {
+    font-size: 0.9rem;
+    color: var(--color-text-alt);
+    margin-top: -1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* --- Botón Modo Oscuro --- */
+.theme-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1.5rem;
+    z-index: 1001;
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+.theme-toggle:hover {
+    box-shadow: var(--shadow-md);
+    transform: scale(1.05);
+}
+.theme-toggle img {
+    width: 24px;
+    height: 24px;
+    position: absolute;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.theme-toggle .icon-sun { opacity: 0; transform: scale(0); }
+.theme-toggle .icon-moon { opacity: 1; transform: scale(1); }
+[data-theme="dark"] .theme-toggle .icon-sun { opacity: 1; transform: scale(1); }
+[data-theme="dark"] .theme-toggle .icon-moon { opacity: 0; transform: scale(0); }
+
+/* --- Contenedor de Autenticación Firebase --- */
+.firebase-auth-container {
+    position: fixed;
+    top: 1rem;
+    left: 1.5rem;
+    z-index: 1001;
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 0.5rem;
+    box-shadow: var(--shadow-md);
+}
+#user-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+#user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+#user-email {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-alt);
+}
+/* Estado de Sincronización */
+#sync-now-btn::after {
+    content: '☁️';
+    display: inline-block;
+    margin-left: 0.5rem;
+    animation: none;
+}
+#sync-now-btn.syncing::after {
+    animation: spin 1s linear infinite;
+}
+#sync-now-btn.synced::after {
+    content: '✅';
+}
+#sync-now-btn.error::after {
+    content: '❌';
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+
+/* --- Navegación (Tabs) --- */
+.main-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-around;
+    background-color: var(--color-bg-alt);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    padding: 0.5rem 0;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+.nav-tab {
+    background: none;
+    border: none;
+    cursor: pointer;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem 0;
+    color: var(--color-text-alt);
+    font-size: 0.75rem;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+.nav-tab .nav-icon {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 0.25rem;
+    filter: var(--icon-filter);
+    transition: filter 0.3s ease;
+}
+.nav-tab.active {
+    color: var(--color-primary);
+    transform: translateY(-2px);
+}
+.nav-tab.active .nav-icon { filter: var(--icon-filter-active); }
+
+/* --- Contenido de Pestañas --- */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.5s ease;
+}
+.tab-content.active { display: block; }
+/* Desplazar el contenido para que no choque con el login */
+.content {
+    margin-top: 4rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Botones --- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+    line-height: 1;
+}
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+.btn:active { transform: scale(0.98) translateY(0); }
+.btn-icon { font-size: 1.2rem; }
+
+.btn.btn-primary { background-color: var(--color-primary); color: #fff; }
+.btn.btn-primary:hover { background-color: var(--color-primary-hover); }
+.btn.btn-secondary { background-color: var(--color-secondary); color: #fff; }
+.btn.btn-secondary:hover { background-color: var(--color-secondary-hover); }
+.btn.btn-warning { background-color: var(--color-warning); color: #000; }
+.btn.btn-warning:hover { background-color: var(--color-warning-hover); }
+.btn-danger { background-color: var(--color-danger); color: white; }
+.btn-danger:hover { background-color: var(--color-danger-hover); }
+.btn-light { background-color: var(--color-border); color: var(--color-text); }
+.btn-light:hover { background-color: #d3d9df; }
+.btn-small {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+}
+.controls {
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* --- Grilla General y Tarjetas (Recetas) --- */
+.grid-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+.card {
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+.card-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    background-color: var(--color-border);
+}
+.card-content {
+    padding: 1.5rem;
+    flex-grow: 1;
+}
+.card-content h3 { margin-bottom: 0.5rem; }
+.card-content p { font-size: 0.9rem; margin-bottom: 1rem; }
+.card-content strong {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    margin-bottom: 0.25rem;
+    display: block;
+}
+.card-content .text-block {
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.card-actions {
+    padding: 0 1.5rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+/* --- Grilla de Inventario (Ingredientes) --- */
+.ingredients-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+}
+.ingredient-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    cursor: pointer;
+}
+.ingredient-card .card-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 3px solid var(--color-border);
+    background-color: var(--color-bg);
+}
+.ingredient-card h4 {
+    margin-top: 0.75rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    text-align: center;
+}
+.ingredient-card .card-actions {
+    padding: 0.5rem 0 0;
+}
+
+
+/* --- Listas (Diario, etc) --- */
+.item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    gap: 1rem;
+}
+.list-item-content {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.list-item-name { font-weight: 500; }
+.item-quantity {
+    font-weight: 600;
+    color: var(--color-primary);
+    white-space: nowrap;
+}
+.list-item-actions { display: flex; gap: 0.5rem; }
+
+/* --- Formularios (Generales) --- */
+.form-container, .settings-group {
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: var(--shadow-md);
+}
+.settings-group { margin-bottom: 1.5rem; }
+.form-group { margin-bottom: 1.25rem; }
+.form-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-text-alt);
+}
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="date"],
+.form-group input[type="search"],
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    font-size: 1rem;
+    font-family: var(--font-family);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.2);
+}
+.form-group textarea { resize: vertical; min-height: 100px; }
+.simple-list {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    color: var(--color-text-alt);
+}
+.simple-list li { margin-bottom: 0.5rem; }
+
+/* --- Estilos de Subida de Imagen --- */
+.form-image-preview {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    border: 2px dashed var(--color-border);
+    background-color: var(--color-bg);
+    margin-bottom: 0.75rem;
+}
+.form-group-file {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* --- Buscador de Ingredientes (Modal Receta) --- */
+#ingredient-search-results {
+    position: absolute;
+    width: calc(100% - 4rem);
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: var(--shadow-md);
+    z-index: 2100;
+    display: none;
+}
+.search-result-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.search-result-item:hover {
+    background-color: var(--color-border);
+}
+.search-result-item img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+/* Lista de ingredientes en la receta */
+#current-recipe-ingredients {
+    margin-top: 1rem;
+    background-color: var(--color-bg);
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+}
+#current-recipe-ingredients .list-item {
+    padding: 0.75rem;
+    background-color: var(--color-bg-alt);
+}
+.ingredient-quantity-input {
+    width: 120px;
+    display: flex;
+    gap: 0.25rem;
+}
+.ingredient-quantity-input input[type="number"] {
+    width: 60px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+    text-align: right;
+}
+.ingredient-quantity-input input[type="text"] {
+    width: 55px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* --- Calculadora Resultados --- */
+.results-box {
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 0;
+    margin-top: 1.5rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    overflow: hidden;
+}
+.results-box h4 {
+    padding: 1.25rem 1.5rem;
+    background-color: var(--color-border);
+    margin: 0;
+}
+.results-box .item-list { padding: 1.5rem; gap: 0; }
+.results-box .list-item {
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--color-border);
+}
+.results-box .list-item:last-child { border-bottom: none; padding-bottom: 0; }
+.results-box .list-item:first-child { padding-top: 0; }
+
+.status-message { margin-top: 1rem; font-weight: 600; }
+.placeholder-text {
+    color: var(--color-text-alt);
+    padding: 3rem 2rem;
+    text-align: center;
+    border: 2px dashed var(--color-border);
+    border-radius: var(--border-radius);
+    background-color: var(--color-bg-alt);
+}
+
+/* --- Timeline (Diario) --- */
+.timeline {
+    position: relative;
+    padding: 1rem 0;
+    max-width: 800px;
+    margin: 0 auto;
+}
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-border);
+}
+.timeline-item {
+    position: relative;
+    padding-left: 55px;
+    margin-bottom: 2rem;
+}
+.timeline-date {
+    position: absolute;
+    left: -10px;
+    top: 0.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    background-color: var(--color-bg);
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+.timeline-content {
+    position: relative;
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+.timeline-content h4 { margin-bottom: 0.5rem; }
+.timeline-content p { white-space: pre-wrap; word-wrap: break-word; }
+.timeline-actions {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* --- Tooltip (Fijo) --- */
+#ingredient-tooltip {
+    position: fixed;
+    top: 50%;
+    left: -9999px; 
+    transform: translateY(-50%) translateX(20px);
+    width: 250px;
+    z-index: 9999;
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    padding: 1rem;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease, left 0s 0.3s;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    pointer-events: none;
+}
+#ingredient-tooltip.visible {
+    display: flex;
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+    transition: opacity 0.3s ease, transform 0.3s ease, left 0s 0s;
+}
+#ingredient-tooltip img {
+    width: 200px;
+    height: 200px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+#ingredient-tooltip span {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    text-align: center;
+}
+
+/* --- Estilos Pestaña Compras --- */
+.shopping-recipe-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+.shopping-recipe-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    background-color: var(--color-border);
+    flex-shrink: 0;
+}
+.shopping-recipe-row label {
+    flex-grow: 1;
+    font-weight: 500;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+.shopping-recipe-row input[type="number"] {
+    width: 80px;
+    padding: 0.5rem;
+    flex-shrink: 0;
+}
+
+#shopping-list-results .list-item {
+    gap: 1rem;
+}
+#shopping-list-results .item-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    background-color: var(--color-border);
+}
+#shopping-list-results .item-details {
+    flex-grow: 1;
+}
+#shopping-list-results .item-details span {
+    display: block;
+    font-weight: 500;
+}
+#shopping-list-results .item-details .item-total-quantity {
+    font-size: 0.9rem;
+    color: var(--color-text-alt);
+}
+#shopping-list-results .item-total-price {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-primary);
+    text-align: right;
+}
+
+/* --- Modal Detalles de Masa --- */
+#dough-details-content .details-header {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+#dough-details-content .details-header p {
+    font-size: 0.9rem;
+    color: var(--color-text-alt);
+}
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+.details-grid-item {
+    background-color: var(--color-bg);
+    padding: 1rem;
+    border-radius: 8px;
+}
+.details-grid-item strong {
+    display: block;
+    font-size: 1.5rem;
+    color: var(--color-primary);
+}
+.details-grid-item span {
+    font-size: 0.9rem;
+    color: var(--color-text-alt);
+}
+.details-section {
+    margin-bottom: 1.5rem;
+}
+.details-section h4 {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.5rem;
+}
+.details-section p,
+.details-section ul {
+    white-space: pre-wrap;
+    background-color: var(--color-bg);
+    padding: 1rem;
+    border-radius: 8px;
+}
+.details-section ul {
+    list-style-position: inside;
+}
+
+
+/* --- Estilos de Modales --- */
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 1rem;
+}
+.modal-container.visible {
+    display: flex;
+    opacity: 1;
+}
+.modal-content {
+    background: var(--color-bg-alt);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 600px;
+    padding: 2rem;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+    
+    transform: scale(0.95) translateY(10px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.modal-container.visible .modal-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+.modal-content.wide {
+    max-width: 800px;
+}
+.modal-content h3 { margin-top: 0; margin-bottom: 1.5rem; }
+.modal-close-btn {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--color-text-alt);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.5rem;
+}
+.modal-close-btn:hover { color: var(--color-text); }
+
+/* --- Responsive --- */
+@media (max-width: 900px) {
+    #ingredient-tooltip {
+        display: none !important;
+    }
+}
+@media (max-width: 600px) {
+    .app-container { padding: 0.75rem; padding-bottom: 90px; }
+    .theme-toggle { top: auto; bottom: 5.5rem; right: 0.75rem; z-index: 100; }
+    /* Ajuste Auth en móvil */
+    .firebase-auth-container {
+        position: relative;
+        top: 0;
+        left: 0;
+        margin: 0 0.75rem 1rem;
+        padding: 0.5rem;
+        width: calc(100% - 1.5rem);
+    }
+    #user-profile {
+        gap: 0.5rem;
+    }
+    #user-email {
+        font-size: 0.8rem;
+        flex-grow: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .content {
+        margin-top: 0; /* Resetear margen */
+    }
+
+    /* Ocultar app en móvil */
+    .firebase-auth-container {
+        display: none; /* Ocultar el perfil de usuario si la app está oculta */
+    }
+    #app-container-main.visible .firebase-auth-container {
+        display: block; /* Mostrar solo si la app está visible */
+    }
+
+
+    .main-nav { padding: 0.25rem 0; }
+    .nav-tab span { font-size: 0.65rem; }
+    .nav-tab .nav-icon { width: 24px; height: 24px; }
+    .grid-list { grid-template-columns: 1fr; gap: 1rem; }
+    .ingredients-grid { grid-template-columns: repeat(2, 1fr); }
+    .timeline-item { padding-left: 0; }
+    .timeline::before { left: 0; transform: translateX(-50%);}
+    .timeline-date { position: static; transform: none; margin-bottom: 0.75rem; display: inline-block; }
+    .timeline-actions { top: 0.75rem; right: 0.75rem; }
+    .btn { padding: 0.75rem 1rem; }
+    .content-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .modal-content { width: 100%; padding: 1.5rem; }
+    #ingredient-search-results { width: calc(100% - 3rem); }
+    .ingredient-quantity-input { width: auto; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+    .ingredient-quantity-input input { width: 100%; }
+    
+    #ingredient-tooltip { display: none !important; }
+
+    .details-grid { grid-template-columns: 1fr; }
+}
+/* --- INICIO: ARREGLOS SOLICITADOS --- */
+/* Arreglo para centrar el texto en la nueva tarjeta de equipo */
+.equipment-card-name {
+    font-weight: 600;
+    font-size: 1.1em;
+    margin-bottom: 0.5rem;
+    text-align: center; /* Asegura el centrado */
+    width: 100%;
+}
+/* Estilo para los botones de búsqueda en el modal de Eventos */
+#equipment-search-results {
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 0.5rem;
+    display: none; /* Se muestra con JS */
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    background-color: var(--color-bg);
+    margin-bottom: 1rem;
+}
+#equipment-search-results button {
+    background-color: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+#equipment-search-results button:hover {
+    background-color: var(--color-primary);
+    color: white;
+}
+/* --- NUEVO: Estilos para la sección de Equipo --- */
+.equipment-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.equipment-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    transition: transform 0.2s;
+    height: 100%;
+}
+
+.equipment-card-image {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    margin-bottom: 0.75rem;
+    border-radius: 8px;
+    background-color: var(--color-bg);
+}
+
+.equipment-card-name {
+    font-weight: 600;
+    font-size: 1.1em;
+    margin-bottom: 0.5rem;
+    text-align: center; /* SOLUCIÓN: Centrar texto de la tarjeta */
+    width: 100%;
+}
+
+.equipment-card .card-actions {
+    margin-top: auto; /* Empuja los botones hacia abajo */
+    padding-top: 0.5rem;
+}
+
+/* --- Ajustes para el Modal de Eventos (Checklist) --- */
+.input-group.add-checklist-item {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.input-group.add-checklist-item input {
+    margin-bottom: 0 !important;
+}
+
+/* Resultados de búsqueda de equipo en modal de Eventos */
+#equipment-search-results {
+    /* Mismo estilo que los resultados de ingrediente, pero flotante */
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 0.5rem;
+    display: none; 
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    background-color: var(--color-bg);
+    margin-bottom: 1rem;
+}
+#equipment-search-results button {
+    background-color: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+#equipment-search-results button:hover {
+    background-color: var(--color-primary);
+    color: white;
+}
+/* Estilo del item de la checklist en el modal */
+.checklist-list {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: var(--color-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--color-border);
+}
+.checklist-list .list-item {
+    padding: 0.5rem 0.2rem;
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-bottom: 1px dashed var(--color-border);
+}
+.checklist-list .list-item:last-child {
+    border-bottom: none;
+}
+.checklist-label {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    cursor: pointer;
+}
+.checklist-label input[type="checkbox"] {
+    margin-right: 0.75rem;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+.checklist-list .list-item-name {
+    font-weight: normal;
+    color: var(--color-text);
+}
+.checklist-list .checked .list-item-name {
+    text-decoration: line-through;
+    color: var(--color-text-alt);
+}
+
+
+/* --- Estilos de Modales --- */
+.modal-container {
+    /* ... (resto sin cambios) */
+}
+/* ... (Resto de CSS sin cambios en esta sección) */
+@media (max-width: 600px) {
+    /* ... (ajustes responsive) ... */
+}
+
+/* --- FIN: ARREGLOS SOLICITADOS --- */

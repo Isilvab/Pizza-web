@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180" viewBox="0 0 300 180" fill="none" stroke="#dfe7ec">
+  <rect width="100%" height="100%" fill="#f4f7f6" />
+  <path d="M150 40 C 130 40, 110 50, 100 70 C 90 90, 90 110, 100 130 C 110 150, 130 160, 150 160 C 170 160, 190 150, 200 130 C 210 110, 210 90, 200 70 C 190 50, 170 40, 150 40 Z M 150 50 A 70 70 0 1 1 150 150 A 70 70 0 1 1 150 50 Z" fill="#fff" stroke-width="2"/>
+  <path d="M100 70 L 150 120 L 200 70 Z" fill="#e74c3c" opacity="0.8" stroke="#c0392b" stroke-width="2"/>
+  <circle cx="130" cy="90" r="5" fill="#f39c12"/>
+  <circle cx="170" cy="90" r="5" fill="#f39c12"/>
+  <circle cx="150" cy="75" r="5" fill="#f39c12"/>
+  <style>
+    [data-theme="dark"] & {
+      fill: #2c3e50;
+      stroke: #34495e;
+    }
+    [data-theme="dark"] & path[fill="#fff"] {
+      fill: #34495e;
+    }
+  </style>
+</svg>

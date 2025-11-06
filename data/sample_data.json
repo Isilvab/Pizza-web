@@ -1,0 +1,58 @@
+{
+  "recipes": [
+    {
+      "id": "recipe_1",
+      "title": "Masa Napolitana Clásica (Ejemplo)",
+      "date": "2025-10-28",
+      "image": "assets/img/placeholder.svg",
+      "ingredients": [
+        {"name": "Harina Caputo Pizzeria (W 260-270)", "amount": "1000 g"},
+        {"name": "Agua (fría)", "amount": "650 g"},
+        {"name": "Sal", "amount": "25 g"},
+        {"name": "Levadura Fresca", "amount": "1.5 g"}
+      ],
+      "steps": [
+        "Disolver levadura y 10% de harina en el agua.",
+        "Añadir sal y el resto de la harina progresivamente.",
+        "Amasar por 20 minutos.",
+        "Reposo en bloque (Apresto) 2 horas.",
+        "Formar bollos (Staglio) de 250g.",
+        "Fermentar (Appretto) 6-8 horas a T.A."
+      ]
+    }
+  ],
+  "inventory": [
+    {
+      "id": "inv_1",
+      "name": "Harina 00 (Caputo Pizzeria)",
+      "quantity": 1500,
+      "unit": "g"
+    },
+    {
+      "id": "inv_2",
+      "name": "Levadura Fresca",
+      "quantity": 20,
+      "unit": "g"
+    },
+    {
+      "id": "inv_3",
+      "name": "Tomates San Marzano (Lata)",
+      "quantity": 2,
+      "unit": "unidades"
+    }
+  ],
+  "diary": [
+    {
+      "id": "diary_1",
+      "date": "2025-10-27",
+      "title": "Prueba con Biga al 80%",
+      "notes": "Resultados increíbles. La masa muy aireada, aunque difícil de manejar. Cocción en 70 segundos a 450°C. Mejorar estirado."
+    },
+    {
+      "id": "diary_2",
+      "date": "2025-10-20",
+      "title": "Horneado estándar 65% hidratación",
+      "notes": "Resultado consistente. Buena estructura. La próxima vez probaré una fermentación en frío más larga (48h)."
+    }
+  ]
+}
