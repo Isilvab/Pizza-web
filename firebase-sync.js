@@ -30,6 +30,26 @@ function showLoginScreen(message = "Por favor, inicia sesión para acceder a tus
         loginError.style.display = 'none';
     }
 }
+function getLocalData() {
+  const fallback = { lastModified: 0 };
+  try {
+    if (typeof window?.exportLocalData === 'function') {
+      const data = window.exportLocalData();
+      if (data && typeof data === 'object') {
+        return typeof data.lastModified === 'number' ? data : { ...data, lastModified: 0 };
+      }
+      return fallback;
+    }
+    const raw = localStorage.getItem('mi-proyecto-pizzas:data');
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.lastModified !== 'number') parsed.lastModified = 0;
+    return parsed;
+  } catch (error) {
+    console.error('No se pudo obtener los datos locales:', error);
+    return fallback;
+  }
+}
 
 function showAppScreen() {
     loginWall.style.display = 'none';

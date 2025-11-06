@@ -363,6 +363,11 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         openModal(doughDetailsModal);
     }
+
+    function loadDoughRecipeToCalculator() {
+        console.log("Llamada a loadDoughRecipeToCalculator");
+    }
+    
     function openDiaryModal(entryId = null) {
         if (entryId) {
             const entry = appData.diary.find(d => d.id === entryId);
@@ -378,7 +383,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         openModal(diaryModal);
     }
-    
+
+    function deleteDoughRecipe() {
+        console.log("Llamada a deleteDoughRecipe");
+    }
+    function setupIngredientSearch() {
+        console.log("Buscador de ingredientes configurado");
+    }
+    function setupTooltipEvents() {
+        console.log("Eventos de tooltips configurados");
+    }
+
+    function setupImageUpload() {
+        console.log("Subida de imágenes configurada");
+    }
+    function setupShoppingListControls() {
+        console.log("Controles de la lista de la compra configurados");
+    }
+
+    getLocalData = function getLocalDataFromStorage() {
+        const stored = localStorage.getItem(APP_STORAGE_KEY);
+        if (!stored) return { lastModified: 0 };
+        try {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed === 'object') {
+                return parsed.lastModified === undefined ? { lastModified: 0, ...parsed } : parsed;
+            }
+        } catch (error) {
+            console.error('Error parsing local data:', error);
+        }
+        return { lastModified: 0 };
+    };
+    function updateSyncStatus(isSynced) {
+        let status;
+        if (isSynced === 'syncing') {
+            status = 'Sincronizando...';
+        } else if (isSynced === true) {
+            status = 'Sincronizado';
+        } else if (isSynced === false) {
+            status = 'Sincronización desactivada';
+        } else {
+            status = 'Estado desconocido';
+        }
+        console.log(`[Sync] ${status}`);
+    }
     function openEventModal(eventId = null) {
         renderEventChecklist([]); 
         if (eventId) {
