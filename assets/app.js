@@ -8,7 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
         recipes: [],
         inventory: [],
         diary: [],
-        doughRecipes: []
+        doughRecipes: [],
+        tools: [],
+        videos: []
     };
     let appData = { ...defaultData };
     
@@ -57,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const doughDetailsContent = document.getElementById('dough-details-content');
     const shoppingListBuilder = document.getElementById('shopping-list-builder');
     const generateShoppingListBtn = document.getElementById('generate-shopping-list-btn');
+    const printShoppingPdfBtn = document.getElementById('print-shopping-pdf-btn');
     const shoppingListResults = document.getElementById('shopping-list-results');
     const diaryList = document.getElementById('diary-list');
     const addDiaryEntryBtn = document.getElementById('add-diary-entry-btn');
@@ -71,7 +74,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const userProfileDiv = document.getElementById('user-profile');
     const userAvatar = document.getElementById('user-avatar');
     const userEmail = document.getElementById('user-email');
+    
+    // --- Selectores (Herramientas) ---
+    const toolsChecklist = document.getElementById('tools-checklist');
+    const addToolBtn = document.getElementById('add-tool-btn');
+    const resetChecklistButton = document.getElementById('reset-checklist-button');
+    const toolModal = document.getElementById('tool-modal');
+    const toolForm = document.getElementById('tool-form');
 
+    // --- Selectores (Videos) ---
+    const videosGrid = document.getElementById('videos-grid');
+    const addVideoBtn = document.getElementById('add-video-btn');
+    const videoModal = document.getElementById('video-modal');
+    const videoForm = document.getElementById('video-form');
 
     // --- Utilidades ---
     const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -99,6 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setupIngredientSearch();
             setupTooltipEvents();
             setupImageUpload(); // <--- MODIFICADO
+            setupToolsListeners(); // <--- NUEVO
+            setupVideosListeners(); // <--- NUEVO
             setupAuthButtons();
             
             if (typeof initFirebaseSync === 'function') {
@@ -150,6 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
         addRecipeBtn.addEventListener('click', () => openRecipeModal());
         addIngredientBtn.addEventListener('click', () => openInventoryModal());
         addDiaryEntryBtn.addEventListener('click', () => openDiaryModal());
+        addToolBtn.addEventListener('click', () => openToolModal());
+        addVideoBtn.addEventListener('click', () => openVideoModal());
         saveDoughRecipeBtn.addEventListener('click', () => openDoughRecipeModal());
         loadDoughRecipeBtn.addEventListener('click', loadDoughRecipeToCalculator);
         viewDoughRecipeBtn.addEventListener('click', () => {
@@ -159,6 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteDoughRecipeBtn.addEventListener('click', deleteDoughRecipe);
         modalContainer.addEventListener('click', (e) => {
             if (e.target === modalContainer || e.target.classList.contains('modal-close-btn')) {
+                closeModal();
+            }
+        });
+        
+        // Cerrar modal con tecla ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalContainer.classList.contains('visible')) {
                 closeModal();
             }
         });
@@ -174,8 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
         hideIngredientTooltip(); 
         setTimeout(() => {
             allModals.forEach(modal => modal.style.display = 'none');
-            [recipeForm, inventoryForm, diaryForm, doughRecipeForm].forEach(form => form.reset());
-            ['recipe-id', 'inv-id', 'diary-id', 'dough-id', 'ingredient-search', 'recipe-image-input'].forEach(id => {
+            [recipeForm, inventoryForm, diaryForm, doughRecipeForm, toolForm, videoForm].forEach(form => {
+                if (form) form.reset();
+            });
+            ['recipe-id', 'inv-id', 'diary-id', 'dough-id', 'tool-id', 'video-id', 'ingredient-search', 'recipe-image-input'].forEach(id => {
                 const el = document.getElementById(id); if (el) el.value = '';
             });
             [currentRecipeIngredients, ingredientSearchResults, doughDetailsContent].forEach(container => {
@@ -307,6 +335,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         openModal(diaryModal);
     }
+    
+    function openToolModal(toolId = null) {
+        if (toolId) {
+            const tool = appData.tools.find(t => t.id === toolId);
+            if (!tool) return;
+            document.getElementById('tool-modal-title').textContent = 'Editar Herramienta';
+            document.getElementById('tool-id').value = tool.id;
+            document.getElementById('tool-name').value = tool.name;
+            document.getElementById('tool-image-url').value = tool.imageUrl || '';
+        } else {
+            document.getElementById('tool-modal-title').textContent = 'Nueva Herramienta';
+        }
+        openModal(toolModal);
+    }
+
+    function openVideoModal(videoId = null) {
+        if (videoId) {
+            const video = appData.videos.find(v => v.id === videoId);
+            if (!video) return;
+            document.getElementById('video-modal-title').textContent = 'Editar Video';
+            document.getElementById('video-id').value = video.id;
+            document.getElementById('video-title').value = video.title;
+            document.getElementById('video-url').value = video.url;
+        } else {
+            document.getElementById('video-modal-title').textContent = 'Agregar Video Útil';
+            document.getElementById('video-id').value = '';
+            document.getElementById('video-title').value = '';
+            document.getElementById('video-url').value = '';
+        }
+        openModal(videoModal);
+    }
 
     // =================================================================
     // --- 4. GESTIÓN DE DATOS (CRUD) --- (MODIFICADO)
@@ -315,7 +374,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadData() {
         const savedData = localStorage.getItem(APP_STORAGE_KEY);
         if (savedData) {
-            appData = { ...defaultData, ...JSON.parse(savedData) };
+            const parsed = JSON.parse(savedData);
+            appData = { ...defaultData, ...parsed };
+            // Asegurar que tools existe
+            if (!appData.tools) appData.tools = [];
         }
     }
 
@@ -342,6 +404,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("- Inventario:", cloudData.inventory?.length || 0);
         console.log("- Diario:", cloudData.diary?.length || 0);
         console.log("- Masas:", cloudData.doughRecipes?.length || 0);
+        console.log("- Herramientas:", cloudData.tools?.length || 0);
+        console.log("- Videos:", cloudData.videos?.length || 0);
         
         // CRÍTICO: Parsear datos si vienen como strings
         const parseIfNeeded = (data) => {
@@ -390,7 +454,9 @@ document.addEventListener('DOMContentLoaded', () => {
             recipes: parseIfNeeded(cloudData.recipes),
             inventory: parseIfNeeded(cloudData.inventory),
             diary: parseIfNeeded(cloudData.diary),
-            doughRecipes: parseIfNeeded(cloudData.doughRecipes)
+            doughRecipes: parseIfNeeded(cloudData.doughRecipes),
+            tools: parseIfNeeded(cloudData.tools),
+            videos: parseIfNeeded(cloudData.videos)
         };
         
         console.log("✅ Datos parseados correctamente:");
@@ -398,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("- Inventario:", appData.inventory.length);
         console.log("- Diario:", appData.diary.length);
         console.log("- Masas:", appData.doughRecipes.length);
+        console.log("- Herramientas:", appData.tools.length);
         
         if (appData.recipes.length > 0) {
             console.log("Primera receta parseada:", appData.recipes[0]);
@@ -563,6 +630,64 @@ document.addEventListener('DOMContentLoaded', () => {
             renderDiary();
             closeModal();
         });
+        
+        // --- Guardar/Actualizar Herramienta ---
+        toolForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('tool-id').value;
+            const formData = {
+                name: document.getElementById('tool-name').value,
+                imageUrl: document.getElementById('tool-image-url').value || '',
+                checked: false
+            };
+            if (id) {
+                appData.tools = appData.tools.map(t => t.id === id ? { ...t, ...formData } : t);
+            } else {
+                formData.id = generateId();
+                appData.tools.push(formData);
+            }
+            appData.tools.sort((a, b) => a.name.localeCompare(b.name));
+            saveData(); 
+            renderTools();
+            closeModal();
+        });
+        
+        // --- Guardar/Actualizar Video ---
+        videoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = document.getElementById('video-id').value;
+            const title = document.getElementById('video-title').value.trim();
+            const url = document.getElementById('video-url').value.trim();
+            
+            if (!title || !url) {
+                alert('Por favor completa todos los campos');
+                return;
+            }
+            
+            // Validar que sea URL de YouTube
+            if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+                alert('Por favor ingresa una URL válida de YouTube');
+                return;
+            }
+            
+            const formData = {
+                title: title,
+                url: url
+            };
+            
+            if (id) {
+                // Editar video existente
+                appData.videos = appData.videos.map(v => v.id === id ? { ...v, ...formData } : v);
+            } else {
+                // Crear nuevo video
+                formData.id = generateId();
+                appData.videos.push(formData);
+            }
+            
+            saveData();
+            renderVideos();
+            closeModal();
+        });
     }
 
     // =================================================================
@@ -574,11 +699,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!appData.inventory) appData.inventory = [];
         if (!appData.diary) appData.diary = [];
         if (!appData.doughRecipes) appData.doughRecipes = [];
+        if (!appData.tools) appData.tools = [];
+        if (!appData.videos) appData.videos = [];
         renderRecipes();
         renderInventory();
         renderDiary();
         renderDoughRecipesSelect();
         renderShoppingListBuilder();
+        renderTools();
+        renderVideos();
     }
     function showPlaceholder(container, message) {
         container.innerHTML = `<div class="placeholder-text">${message}</div>`;
@@ -688,6 +817,38 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             shoppingListBuilder.appendChild(row);
         });
+        
+        // Popular selector de recetas de masa
+        const shoppingDoughSelect = document.getElementById('shopping-dough-recipe');
+        if (shoppingDoughSelect) {
+            shoppingDoughSelect.innerHTML = '<option value="">-- Sin calcular harina (solo toppings) --</option>';
+            if (appData.doughRecipes && appData.doughRecipes.length > 0) {
+                appData.doughRecipes.forEach(dough => {
+                    const option = document.createElement('option');
+                    option.value = dough.id;
+                    option.textContent = escapeHTML(dough.title);
+                    shoppingDoughSelect.appendChild(option);
+                });
+            }
+        }
+        
+        // Popular selector de harinas del inventario
+        const flourIngredientSelect = document.getElementById('shopping-flour-ingredient');
+        if (flourIngredientSelect) {
+            flourIngredientSelect.innerHTML = '<option value="">-- Sin calcular precio de harina --</option>';
+            if (appData.inventory && appData.inventory.length > 0) {
+                // Filtrar ingredientes que contengan "harina" en el nombre
+                const flourItems = appData.inventory.filter(item => 
+                    item.name && item.name.toLowerCase().includes('harina')
+                );
+                flourItems.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = `${escapeHTML(item.name)} ($${item.price}/${item.priceUnit})`;
+                    flourIngredientSelect.appendChild(option);
+                });
+            }
+        }
     }
     // ... (renderDiary, renderCurrentRecipeIngredients sin cambios)
     function renderDiary() {
@@ -737,6 +898,36 @@ document.addEventListener('DOMContentLoaded', () => {
             currentRecipeIngredients.appendChild(li);
         });
     }
+    
+    function renderTools() {
+        toolsChecklist.innerHTML = '';
+        if (!appData.tools || appData.tools.length === 0) {
+            showPlaceholder(toolsChecklist, 'No hay herramientas registradas. Añade tu primera herramienta.');
+            return;
+        }
+        appData.tools.forEach(tool => {
+            if (!tool) return;
+            const card = document.createElement('div');
+            card.className = `card tool-card ${tool.checked ? 'tool-checked' : ''}`;
+            card.innerHTML = `
+                <div class="tool-card-image">
+                    <img src="${escapeHTML(tool.imageUrl) || DEFAULT_PLACEHOLDER}" alt="${escapeHTML(tool.name)}">
+                </div>
+                <div class="tool-card-content">
+                    <h4>${escapeHTML(tool.name)}</h4>
+                    <div class="tool-checkbox-wrapper">
+                        <input type="checkbox" ${tool.checked ? 'checked' : ''} data-id="${tool.id}" data-action="toggle-tool">
+                        <label>Disponible</label>
+                    </div>
+                    <div class="tool-actions">
+                        <button class="btn btn-light btn-small" data-id="${tool.id}" data-action="edit-tool">Editar</button>
+                        <button class="btn btn-danger btn-small" data-id="${tool.id}" data-action="delete-tool">Borrar</button>
+                    </div>
+                </div>
+            `;
+            toolsChecklist.appendChild(card);
+        });
+    }
 
     // =================================================================
     // --- 6. GESTIÓN DE EVENTOS (Delegados y UI) --- (Sin cambios)
@@ -780,6 +971,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderDiary();
                     }
                     break;
+                case 'delete-tool':
+                    if (confirm('¿Borrar esta herramienta?')) {
+                        appData.tools = appData.tools.filter(t => t.id !== id);
+                        saveData(); 
+                        renderTools();
+                    }
+                    break;
+                case 'edit-tool':
+                    openToolModal(id);
+                    break;
+                case 'toggle-tool':
+                    const checkbox = e.target;
+                    const tool = appData.tools.find(t => t.id === id);
+                    if (tool) {
+                        tool.checked = checkbox.checked;
+                        saveData();
+                        renderTools();
+                    }
+                    break;
                 case 'delete-recipe-ingredient':
                     target.closest('li.list-item').remove();
                     if (currentRecipeIngredients.children.length === 0) {
@@ -789,6 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         generateShoppingListBtn.addEventListener('click', generateShoppingList);
+        printShoppingPdfBtn.addEventListener('click', generateShoppingPDF);
     }
     function loadDoughRecipeToCalculator() {
         const id = doughRecipeSelect.value;
@@ -932,6 +1143,19 @@ document.addEventListener('DOMContentLoaded', () => {
         ingredientTooltip.classList.remove('visible');
     }
 
+    // --- NUEVO: Listeners para Herramientas ---
+    function setupToolsListeners() {
+        if (resetChecklistButton) {
+            resetChecklistButton.addEventListener('click', () => {
+                if (confirm('¿Restablecer el checklist? Todas las herramientas se marcarán como no disponibles.')) {
+                    appData.tools.forEach(tool => tool.checked = false);
+                    saveData();
+                    renderTools();
+                }
+            });
+        }
+    }
+
     // --- MODIFICADO: setupImageUpload ahora comprime y guarda un Archivo (Blob) ---
     function setupImageUpload() {
         recipeImageInput.addEventListener('change', (e) => {
@@ -998,6 +1222,74 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(file); // Leer el archivo para obtener el Base64 temporal
     }
 
+    // =================================================================
+    // --- GESTIÓN DE VIDEOS ÚTILES ---
+    // =================================================================
+    function renderVideos() {
+        videosGrid.innerHTML = '';
+        if (!appData.videos || appData.videos.length === 0) {
+            videosGrid.innerHTML = '<p class="placeholder-text-small" style="grid-column: 1/-1;">No hay videos guardados. Agrega videos útiles de YouTube para tener referencias rápidas.</p>';
+            return;
+        }
+        
+        appData.videos.forEach(video => {
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            
+            // Extraer ID del video de YouTube
+            const videoId = extractYouTubeId(video.url);
+            const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '';
+            
+            card.innerHTML = `
+                <div class="video-thumbnail" data-url="${escapeHTML(video.url)}">
+                    ${thumbnailUrl ? `<img src="${thumbnailUrl}" alt="${escapeHTML(video.title)}">` : ''}
+                    <div class="video-play-icon">▶</div>
+                </div>
+                <div class="video-info">
+                    <div class="video-title">${escapeHTML(video.title)}</div>
+                    <div class="video-actions">
+                        <button class="btn btn-danger btn-small" data-video-id="${video.id}">Eliminar</button>
+                    </div>
+                </div>
+            `;
+            
+            videosGrid.appendChild(card);
+        });
+    }
+    
+    function extractYouTubeId(url) {
+        if (!url) return null;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    }
+    
+    function setupVideosListeners() {
+        // Event delegation para acciones de videos
+        videosGrid.addEventListener('click', (e) => {
+            // Abrir video en nueva pestaña
+            const thumbnail = e.target.closest('.video-thumbnail');
+            if (thumbnail) {
+                const url = thumbnail.dataset.url;
+                if (url) {
+                    window.open(url, '_blank');
+                }
+                return;
+            }
+            
+            // Eliminar video
+            const deleteBtn = e.target.closest('[data-video-id]');
+            if (deleteBtn) {
+                const videoId = deleteBtn.dataset.videoId;
+                const video = appData.videos.find(v => v.id === videoId);
+                if (video && confirm(`¿Eliminar el video "${video.title}"?`)) {
+                    appData.videos = appData.videos.filter(v => v.id !== videoId);
+                    saveData();
+                    renderVideos();
+                }
+            }
+        });
+    }
 
     // =================================================================
     // --- 7. LÓGICA DE CALCULADORA Y COMPRAS --- (Sin cambios)
@@ -1035,13 +1327,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     function generateShoppingList() {
-        const totalIngredients = {}; 
+        const totalIngredients = {};
+        let totalPizzas = 0;
+        
+        // Obtener la receta de masa seleccionada
+        const selectedDoughId = document.getElementById('shopping-dough-recipe').value;
+        const selectedDough = selectedDoughId ? appData.doughRecipes.find(d => d.id === selectedDoughId) : null;
+        
+        // Obtener el ingrediente de harina seleccionado
+        const selectedFlourId = document.getElementById('shopping-flour-ingredient').value;
+        const selectedFlour = selectedFlourId ? appData.inventory.find(i => i.id === selectedFlourId) : null;
+        
         shoppingListBuilder.querySelectorAll('.shopping-recipe-row').forEach(row => {
             const recipeId = row.dataset.recipeId;
             const quantity = parseFloat(row.querySelector('input').value) || 0;
             if (quantity === 0) return;
+            
+            totalPizzas += quantity; // Acumular total de pizzas
+            
             const recipe = appData.recipes.find(r => r.id === recipeId);
             if (!recipe || !Array.isArray(recipe.ingredients)) return;
+            
+            // Procesar ingredientes normales (toppings)
             recipe.ingredients.forEach(item => {
                 const baseItem = appData.inventory.find(i => i.id === item.inventoryId);
                 if (!baseItem) return;
@@ -1055,12 +1362,103 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalIngredients[item.inventoryId].units[unit] += item.quantity * quantity;
             });
         });
+        
         shoppingListResults.innerHTML = '';
-        if (Object.keys(totalIngredients).length === 0) {
+        
+        // Variable para acumular costo de harina
+        let flourCost = 0;
+        
+        // NUEVO: Mostrar harina calculada si hay una receta de masa seleccionada
+        if (selectedDough && totalPizzas > 0) {
+            const pesoMasa = 250; // Peso estándar por pizza
+            const hidratacion = selectedDough.hydration || 65;
+            const sal = selectedDough.salt || 2.5;
+            const levadura = selectedDough.yeast || 0.3;
+            
+            const pesoTotal = totalPizzas * pesoMasa;
+            const totalPartes = 100 + hidratacion + sal + levadura;
+            const harina = (pesoTotal * 100) / totalPartes;
+            const agua = (harina * hidratacion) / 100;
+            const salG = (harina * sal) / 100;
+            const levaduraG = (harina * levadura) / 100;
+            
+            // Encabezado de masa
+            const headerLi = document.createElement('li');
+            headerLi.className = 'list-item';
+            headerLi.style.background = 'rgba(230, 57, 70, 0.15)';
+            headerLi.style.borderLeft = '4px solid var(--color-primary)';
+            headerLi.innerHTML = `
+                <div class="item-details" style="flex-grow: 1;">
+                    <strong style="color: var(--color-primary); font-size: 1.1rem;">� MASA: ${escapeHTML(selectedDough.title)}</strong>
+                    <span class="item-total-quantity">Para ${totalPizzas} pizza${totalPizzas > 1 ? 's' : ''} de ${pesoMasa}g cada una</span>
+                </div>
+            `;
+            shoppingListResults.appendChild(headerLi);
+            
+            // Ingredientes de masa
+            const ingredientesMasa = [
+                { nombre: 'Harina', porcentaje: '100%', cantidad: harina, calcularPrecio: true },
+                { nombre: 'Agua', porcentaje: `${hidratacion}%`, cantidad: agua, calcularPrecio: false },
+                { nombre: 'Sal', porcentaje: `${sal}%`, cantidad: salG, calcularPrecio: false },
+                { nombre: 'Levadura Fresca', porcentaje: `${levadura}%`, cantidad: levaduraG, calcularPrecio: false }
+            ];
+            
+            ingredientesMasa.forEach(ing => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.style.paddingLeft = '2rem';
+                
+                let precioHTML = `${ing.cantidad.toFixed(0)} g`;
+                
+                // Calcular precio solo para harina si hay ingrediente seleccionado
+                if (ing.calcularPrecio && selectedFlour) {
+                    const priceUnit = selectedFlour.priceUnit ? selectedFlour.priceUnit.toLowerCase() : 'g';
+                    const flourInBaseUnit = convertUnit(ing.cantidad, 'g', priceUnit);
+                    if (flourInBaseUnit !== null) {
+                        flourCost = flourInBaseUnit * (selectedFlour.price || 0);
+                        precioHTML = `${ing.cantidad.toFixed(0)} g → <strong style="color: var(--color-primary);">$${Math.round(flourCost)}</strong>`;
+                    }
+                }
+                
+                li.innerHTML = `
+                    <div class="item-details" style="flex-grow: 1;">
+                        <span>🌾 ${ing.nombre} (${ing.porcentaje})</span>
+                    </div>
+                    <span class="item-total-price">${precioHTML}</span>
+                `;
+                shoppingListResults.appendChild(li);
+            });
+            
+            // Separador
+            const separator = document.createElement('li');
+            separator.className = 'list-item';
+            separator.style.background = 'transparent';
+            separator.style.borderTop = '2px solid var(--color-border)';
+            separator.style.padding = '0.5rem 0';
+            separator.innerHTML = '<strong style="color: var(--color-text-alt); font-size: 0.9rem;">TOPPINGS E INGREDIENTES</strong>';
+            shoppingListResults.appendChild(separator);
+        }
+        
+        if (Object.keys(totalIngredients).length === 0 && !selectedDough) {
             shoppingListResults.innerHTML = '<li class="placeholder-text-small" ...>Selecciona la cantidad de pizzas...</li>';
             return;
         }
-        let grandTotalCost = 0;
+        
+        if (Object.keys(totalIngredients).length === 0 && selectedDough) {
+            // Solo hay masa, no toppings - mostrar total con harina
+            if (selectedFlour) {
+                const totalLi = document.createElement('li');
+                totalLi.className = 'list-item';
+                totalLi.style.background = 'var(--color-border)';
+                totalLi.innerHTML = `
+                    <div class="item-details" style="flex-grow: 1;"><strong style="font-size: 1.1rem;">COSTO TOTAL ESTIMADO</strong></div>
+                    <strong class="item-total-price" style="font-size: 1.1rem;">$${Math.round(flourCost)}</strong>
+                `;
+                shoppingListResults.appendChild(totalLi);
+            }
+            return;
+        }
+        let grandTotalCost = flourCost; // Iniciar con el costo de la harina
         for (const invId in totalIngredients) {
             const item = totalIngredients[invId];
             const { baseItem, units } = item;
@@ -1114,6 +1512,267 @@ document.addEventListener('DOMContentLoaded', () => {
             return conversions[from][to](quantity);
         }
         return null;
+    }
+
+    // =================================================================
+    // --- GENERAR PDF DE LISTA DE COMPRAS ---
+    // =================================================================
+    function generateShoppingPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Configuración de colores
+        const primaryColor = [230, 57, 70];
+        const darkBg = [44, 44, 44];
+        const lightGray = [240, 240, 240];
+        const textColor = [50, 50, 50];
+        
+        // Encabezado con fondo
+        doc.setFillColor(...primaryColor);
+        doc.rect(0, 0, 210, 35, 'F');
+        
+        // Título
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.setFont(undefined, 'bold');
+        doc.text('LISTA DE COMPRAS', 105, 15, { align: 'center' });
+        
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'normal');
+        const today = new Date().toLocaleDateString('es-ES', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        doc.text(today, 105, 25, { align: 'center' });
+        
+        let yPos = 45;
+        
+        // Obtener datos de la lista de compras actual
+        const selectedDoughId = document.getElementById('shopping-dough-recipe')?.value;
+        const selectedFlourId = document.getElementById('shopping-flour-ingredient')?.value;
+        
+        const selectedDough = selectedDoughId ? appData.doughRecipes.find(d => d.id === selectedDoughId) : null;
+        const selectedFlour = selectedFlourId ? appData.inventory.find(i => i.id === selectedFlourId) : null;
+        
+        // Calcular total de pizzas desde las filas de recetas
+        let totalPizzas = 0;
+        shoppingListBuilder.querySelectorAll('.shopping-recipe-row').forEach(row => {
+            const input = row.querySelector('input[type="number"]');
+            totalPizzas += parseInt(input?.value || 0);
+        });
+        
+        doc.setTextColor(...textColor);
+        
+        // Sección de Masa
+        if (selectedDough && totalPizzas > 0) {
+            const pesoMasa = 250;
+            const hidratacion = selectedDough.hydration || 65;
+            const sal = selectedDough.salt || 2.5;
+            const levadura = selectedDough.yeast || 0.3;
+            
+            const pesoTotal = totalPizzas * pesoMasa;
+            const totalPartes = 100 + hidratacion + sal + levadura;
+            const harina = (pesoTotal * 100) / totalPartes;
+            const agua = (harina * hidratacion) / 100;
+            const salG = (harina * sal) / 100;
+            const levaduraG = (harina * levadura) / 100;
+            
+            // Título de masa
+            doc.setFillColor(...lightGray);
+            doc.rect(10, yPos - 5, 190, 10, 'F');
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(...primaryColor);
+            doc.text(`MASA: ${selectedDough.title}`, 15, yPos);
+            
+            yPos += 8;
+            doc.setFontSize(10);
+            doc.setTextColor(...textColor);
+            doc.setFont(undefined, 'italic');
+            doc.text(`Para ${totalPizzas} pizza${totalPizzas > 1 ? 's' : ''} de ${pesoMasa}g cada una`, 15, yPos);
+            
+            yPos += 10;
+            
+            // Ingredientes de masa
+            doc.setFont(undefined, 'normal');
+            const ingredientesMasa = [
+                { nombre: 'Harina', cantidad: `${harina.toFixed(0)} g`, porcentaje: '100%' },
+                { nombre: 'Agua', cantidad: `${agua.toFixed(0)} g`, porcentaje: `${hidratacion}%` },
+                { nombre: 'Sal', cantidad: `${salG.toFixed(1)} g`, porcentaje: `${sal}%` },
+                { nombre: 'Levadura Fresca', cantidad: `${levaduraG.toFixed(1)} g`, porcentaje: `${levadura}%` }
+            ];
+            
+            ingredientesMasa.forEach(ing => {
+                doc.text(`  - ${ing.nombre} (${ing.porcentaje})`, 20, yPos);
+                doc.text(ing.cantidad, 190, yPos, { align: 'right' });
+                yPos += 6;
+            });
+            
+            // Costo de harina si existe
+            if (selectedFlour) {
+                const priceUnit = selectedFlour.priceUnit ? selectedFlour.priceUnit.toLowerCase() : 'g';
+                const flourInBaseUnit = convertUnit(harina, 'g', priceUnit);
+                if (flourInBaseUnit !== null) {
+                    const flourCost = flourInBaseUnit * (selectedFlour.price || 0);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(...primaryColor);
+                    doc.text(`Costo harina: $${Math.round(flourCost)}`, 190, yPos, { align: 'right' });
+                    yPos += 8;
+                }
+            }
+            
+            yPos += 5;
+            // Línea separadora
+            doc.setDrawColor(...primaryColor);
+            doc.setLineWidth(0.5);
+            doc.line(10, yPos, 200, yPos);
+            yPos += 10;
+        }
+        
+        // Título de toppings
+        doc.setFillColor(...lightGray);
+        doc.rect(10, yPos - 5, 190, 10, 'F');
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(...primaryColor);
+        doc.text('TOPPINGS E INGREDIENTES', 15, yPos);
+        yPos += 10;
+        
+        // Obtener ingredientes de toppings
+        const totalIngredients = {};
+        let totalPizzasForDough = 0;
+        
+        // Recorrer todas las filas de recetas en el shopping builder
+        shoppingListBuilder.querySelectorAll('.shopping-recipe-row').forEach(row => {
+            const recipeId = row.dataset.recipeId;
+            const input = row.querySelector('input[type="number"]');
+            const quantity = parseInt(input?.value || 0);
+            if (quantity <= 0) return;
+            
+            totalPizzasForDough += quantity;
+            
+            const recipe = appData.recipes.find(r => r.id === recipeId);
+            if (!recipe || !recipe.ingredients) return;
+            
+            recipe.ingredients.forEach(ing => {
+                if (!totalIngredients[ing.inventoryId]) {
+                    const invItem = appData.inventory.find(i => i.id === ing.inventoryId);
+                    if (!invItem) return;
+                    totalIngredients[ing.inventoryId] = {
+                        baseItem: invItem,
+                        units: {}
+                    };
+                }
+                const unit = ing.unit || 'g';
+                if (!totalIngredients[ing.inventoryId].units[unit]) {
+                    totalIngredients[ing.inventoryId].units[unit] = 0;
+                }
+                totalIngredients[ing.inventoryId].units[unit] += ing.quantity * quantity;
+            });
+        });
+        
+        let grandTotalCost = 0;
+        
+        // Calcular costo de harina si existe
+        if (selectedDough && totalPizzasForDough > 0 && selectedFlour) {
+            const pesoMasa = 250;
+            const hidratacion = selectedDough.hydration || 65;
+            const sal = selectedDough.salt || 2.5;
+            const levadura = selectedDough.yeast || 0.3;
+            const pesoTotal = totalPizzasForDough * pesoMasa;
+            const totalPartes = 100 + hidratacion + sal + levadura;
+            const harina = (pesoTotal * 100) / totalPartes;
+            const priceUnit = selectedFlour.priceUnit ? selectedFlour.priceUnit.toLowerCase() : 'g';
+            const flourInBaseUnit = convertUnit(harina, 'g', priceUnit);
+            if (flourInBaseUnit !== null) {
+                grandTotalCost = flourInBaseUnit * (selectedFlour.price || 0);
+            }
+        }
+        
+        // Listar toppings
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(...textColor);
+        doc.setFontSize(10);
+        
+        for (const invId in totalIngredients) {
+            const item = totalIngredients[invId];
+            const { baseItem, units } = item;
+            let totalCost = 0;
+            let totalQtyInBaseUnit = 0;
+            const priceUnit = baseItem.priceUnit ? baseItem.priceUnit.toLowerCase() : 'g';
+            const quantityStrings = [];
+            
+            for (const unit in units) {
+                const quantity = units[unit];
+                quantityStrings.push(`${quantity.toFixed(1)} ${unit}`);
+                const convertedQty = convertUnit(quantity, unit, priceUnit);
+                if (convertedQty !== null) {
+                    totalQtyInBaseUnit += convertedQty;
+                }
+            }
+            
+            totalCost = totalQtyInBaseUnit * (baseItem.price || 0);
+            grandTotalCost += totalCost;
+            
+            // Verificar si necesitamos nueva página
+            if (yPos > 265) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            // Agregar imagen del ingrediente si existe
+            if (baseItem.image && baseItem.image.startsWith('http')) {
+                try {
+                    doc.addImage(baseItem.image, 'JPEG', 15, yPos - 3, 8, 8, undefined, 'FAST');
+                } catch (e) {
+                    // Si falla la carga de imagen, continuar sin ella
+                    console.warn('No se pudo cargar imagen:', e);
+                }
+                doc.text(baseItem.name, 26, yPos + 2);
+            } else {
+                doc.text(`  ${baseItem.name}`, 20, yPos + 2);
+            }
+            
+            doc.text(quantityStrings.join(', '), 120, yPos + 2);
+            if (totalCost > 0) {
+                doc.text(`$${Math.round(totalCost)}`, 190, yPos + 2, { align: 'right' });
+            }
+            yPos += 12;
+        }
+        
+        // Total final
+        yPos += 5;
+        doc.setDrawColor(...primaryColor);
+        doc.setLineWidth(1);
+        doc.line(10, yPos, 200, yPos);
+        yPos += 8;
+        
+        doc.setFillColor(...primaryColor);
+        doc.rect(10, yPos - 5, 190, 12, 'F');
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('COSTO TOTAL ESTIMADO', 15, yPos + 3);
+        doc.text(`$${Math.round(grandTotalCost)}`, 195, yPos + 3, { align: 'right' });
+        
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.setFont(undefined, 'normal');
+            doc.text(
+                `Generado con Gestor de Pizzas - Página ${i} de ${pageCount}`,
+                105,
+                290,
+                { align: 'center' }
+            );
+        }
+        
+        // Descargar PDF
+        doc.save(`Lista_Compras_${getTodayDate()}.pdf`);
     }
 
     // =================================================================
@@ -1183,6 +1842,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
 
     function setupAuthButtons() {
+        const profileToggle = document.getElementById('user-profile-toggle');
+        const profileDropdown = document.getElementById('user-profile-dropdown');
+        
+        // Toggle del dropdown al hacer click en el avatar
+        if (profileToggle) {
+            profileToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                profileDropdown.classList.toggle('active');
+            });
+        }
+        
+        // Cerrar dropdown al hacer click fuera
+        document.addEventListener('click', (e) => {
+            if (profileDropdown && !profileDropdown.contains(e.target) && !profileToggle.contains(e.target)) {
+                profileDropdown.classList.remove('active');
+            }
+        });
+        
         loginBtn.addEventListener('click', () => {
             if (typeof signInWithGoogle === 'function') {
                 signInWithGoogle();
@@ -1191,6 +1868,10 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.addEventListener('click', () => {
             if (typeof signOut === 'function') {
                 signOut();
+            }
+            // Cerrar dropdown al salir
+            if (profileDropdown) {
+                profileDropdown.classList.remove('active');
             }
         });
         syncNowBtn.addEventListener('click', async () => {
@@ -1212,8 +1893,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Renderizar la app con los datos locales
         renderAll();
         // Mostrar el perfil de usuario
-        userProfileDiv.style.display = 'flex';
+        userProfileDiv.style.display = 'block';
         userAvatar.src = user.photoURL || DEFAULT_PLACEHOLDER;
+        document.getElementById('user-avatar-large').src = user.photoURL || DEFAULT_PLACEHOLDER;
         userEmail.textContent = user.email;
         updateSyncStatus(null); // Limpiar estado
     }
