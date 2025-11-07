@@ -8,21 +8,15 @@ document.addEventListener('DOMContentLoaded', () => {
         recipes: [],
         inventory: [],
         diary: [],
-        doughRecipes: [],
-        events: [], // <--- COLECCIÓN DE EVENTOS
-        equipment: []
+        doughRecipes: []
     };
-    const DEFAULT_EQUIPMENT_PRESETS = [
-        { name: 'Pala para pizza', image: DEFAULT_PLACEHOLDER },
-        { name: 'Piedra o acero para horno', image: DEFAULT_PLACEHOLDER },
-        { name: 'Cortador de pizza', image: DEFAULT_PLACEHOLDER },
-        { name: 'Cajones para fermentar', image: DEFAULT_PLACEHOLDER },
-        { name: 'Termómetro infrarrojo', image: DEFAULT_PLACEHOLDER }
-    ];
     let appData = { ...defaultData };
-    let appInitialized = false;
+    
+    // EXPONER GLOBALMENTE PARA DEBUGGING
+    window.exportLocalData = () => JSON.parse(JSON.stringify(appData));
+    window.getLocalDataSnapshot = () => appData;
 
-    // --- Variable temporal para el archivo de imagen ---
+    // --- NUEVO: Variable temporal para el *archivo* de imagen (no Base64) ---
     let currentRecipeImageFile = null;
 
     // --- Selectores del DOM (Generales) ---
@@ -45,13 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const recipeImagePreview = document.getElementById('recipe-image-preview');
     const recipeRemoveImageBtn = document.getElementById('recipe-remove-image-btn');
 
-    // --- Selectores (Inventario) ---
+    // --- (Resto de Selectores sin cambios) ---
     const inventoryList = document.getElementById('inventory-list');
     const addIngredientBtn = document.getElementById('add-ingredient-btn');
     const inventoryModal = document.getElementById('inventory-modal');
     const inventoryForm = document.getElementById('inventory-form');
-
-    // --- Selectores (Calculadora y Recetas de Masa) ---
     const calculateBtn = document.getElementById('calculate-btn');
     const calcResultsContainer = document.getElementById('calc-results');
     const saveDoughRecipeBtn = document.getElementById('save-dough-recipe-btn');
@@ -63,62 +55,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const doughRecipeForm = document.getElementById('dough-recipe-form');
     const doughDetailsModal = document.getElementById('dough-details-modal');
     const doughDetailsContent = document.getElementById('dough-details-content');
-
-    // --- Selectores (Compras) ---
     const shoppingListBuilder = document.getElementById('shopping-list-builder');
     const generateShoppingListBtn = document.getElementById('generate-shopping-list-btn');
     const shoppingListResults = document.getElementById('shopping-list-results');
-    const shoppingPizzaTotal = document.getElementById('shopping-pizza-total'); // <--- NUEVO
-    const shoppingDoughSelect = document.getElementById('shopping-dough-select'); // <--- NUEVO
-    const shoppingDoughDetails = document.getElementById('shopping-dough-details'); // <--- NUEVO
-    const exportShoppingListBtn = document.getElementById('export-shopping-list-btn'); // <--- NUEVO
-
-    // --- Selectores (Diario) ---
     const diaryList = document.getElementById('diary-list');
     const addDiaryEntryBtn = document.getElementById('add-diary-entry-btn');
     const diaryModal = document.getElementById('diary-modal');
     const diaryForm = document.getElementById('diary-form');
-
-    // --- Selectores (Eventos) ---
-    const eventList = document.getElementById('event-list');
-    const addEventBtn = document.getElementById('add-event-btn');
-    const eventModal = document.getElementById('event-modal');
-    const eventForm = document.getElementById('event-form');
-    const eventChecklist = document.getElementById('event-checklist');
-    const newChecklistItemInput = document.getElementById('new-checklist-item');
-    const addChecklistItemBtn = document.getElementById('add-checklist-item-btn');
-    const equipmentSearchInput = document.getElementById('equipment-search');
-    const equipmentSearchResults = document.getElementById('equipment-search-results');
-    const loadEquipmentPresetsBtn = document.getElementById('load-equipment-presets-btn');
-
-    // --- Selectores (Equipo Predefinido) ---
-    const equipmentList = document.getElementById('equipment-list');
-    const addEquipmentBtn = document.getElementById('add-equipment-btn');
-    const equipmentModal = document.getElementById('equipment-modal');
-    const equipmentForm = document.getElementById('equipment-form');
-    
-    // --- Selectores (Ajustes) ---
     const exportBtn = document.getElementById('export-json-btn');
     const importInput = document.getElementById('import-json-input');
     const importStatus = document.getElementById('import-status');
-
-    // --- Selectores de Autenticación y Sincronización ---
     const loginBtn = document.getElementById('login-btn'); 
     const logoutBtn = document.getElementById('logout-btn');
     const syncNowBtn = document.getElementById('sync-now-btn');
     const userProfileDiv = document.getElementById('user-profile');
     const userAvatar = document.getElementById('user-avatar');
-    const userEmail = document.getElementById('user-email-menu'); // <-- CAMBIADO
-    const appContainerMain = document.getElementById('app-container-main');
-    const sessionMenu = document.getElementById('session-menu'); // <-- NUEVO
-    const syncToggle = document.getElementById('sync-toggle'); // <-- NUEVO
-    let syncEnabled = true; // <-- NUEVO
+    const userEmail = document.getElementById('user-email');
 
 
     // --- Utilidades ---
     const generateId = () => `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const getTodayDate = () => new Date().toISOString().split('T')[0];
     const escapeHTML = (str) => str ? String(str).replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+
+    // EXPONER UTILIDADES GLOBALMENTE
+    window.generateId = generateId;
+    window.getTodayDate = getTodayDate;
 
     // =================================================================
     // --- 1. INICIALIZACIÓN ---
@@ -127,35 +89,32 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const savedTheme = localStorage.getItem('theme') || 'light';
             applyTheme(savedTheme);
-
+            setupTabNavigation();
+            setupThemeToggle();
+            setupDataManagement();
+            setupCalculator();
+            setupModalControls();
+            setupFormHandlers(); // <--- MODIFICADO
+            setupEventListeners();
+            setupIngredientSearch();
+            setupTooltipEvents();
+            setupImageUpload(); // <--- MODIFICADO
+            setupAuthButtons();
+            
             if (typeof initFirebaseSync === 'function') {
                 initFirebaseSync(handleUserLogin, handleUserLogout);
             } else {
                 console.error("Error: firebase-sync.js no se cargó correctamente.");
-                alert("Error crítico de la aplicación. Contacte al administrador.");
+                showLoginScreen("Error crítico de la aplicación. Contacte al administrador.");
             }
-
         } catch (error) {
             console.error("Error fatal durante la inicialización:", error);
-            alert("Error fatal al cargar la app. Ver la consola.");
+            const loginError = document.getElementById('login-error-message');
+            if(loginError) {
+                loginError.textContent = "Error fatal al cargar la app. Ver la consola.";
+                loginError.style.display = 'block';
+            }
         }
-    }
-
-    function startApp() {
-        if (appInitialized) return;
-        appInitialized = true;
-
-        // Se mantienen aquí las configuraciones que dependen de que la app esté lista
-        setupTabNavigation();
-        setupThemeToggle();
-        setupDataManagement();
-        setupCalculator();
-        setupIngredientSearch();
-        setupEquipmentSearch();
-        setupTooltipEvents();
-        setupImageUpload();
-        setupShoppingListControls();
-        setupEquipmentPresetsControl();
     }
 
     // =================================================================
@@ -166,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.addEventListener('click', () => {
                 const targetTab = tab.dataset.tab;
                 tabs.forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
                 document.getElementById(targetTab).classList.add('active');
             });
@@ -187,114 +146,84 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3. GESTIÓN DE MODALES --- (MODIFICADO)
     // =================================================================
     function setupModalControls() {
-        // Ensure the static 'Add Recipe' button has a direct listener.
-        if (addRecipeBtn) {
-            addRecipeBtn.addEventListener('click', () => {
-                // Call openRecipeModal without an ID to open it in 'new' mode.
-                openRecipeModal();
-            });
-        }
-
-        if (addIngredientBtn) addIngredientBtn.addEventListener('click', () => openInventoryModal());
-        if (addDiaryEntryBtn) addDiaryEntryBtn.addEventListener('click', () => openDiaryModal());
-        if (addEventBtn) addEventBtn.addEventListener('click', () => openEventModal());
-        if (addEquipmentBtn) addEquipmentBtn.addEventListener('click', () => openEquipmentModal());
-        if (saveDoughRecipeBtn) saveDoughRecipeBtn.addEventListener('click', () => openDoughRecipeModal());
-        if (loadDoughRecipeBtn) loadDoughRecipeBtn.addEventListener('click', loadDoughRecipeToCalculator);
-        if (viewDoughRecipeBtn) viewDoughRecipeBtn.addEventListener('click', () => {
+        // ... (el resto de los listeners sin cambios)
+        addRecipeBtn.addEventListener('click', () => openRecipeModal());
+        addIngredientBtn.addEventListener('click', () => openInventoryModal());
+        addDiaryEntryBtn.addEventListener('click', () => openDiaryModal());
+        saveDoughRecipeBtn.addEventListener('click', () => openDoughRecipeModal());
+        loadDoughRecipeBtn.addEventListener('click', loadDoughRecipeToCalculator);
+        viewDoughRecipeBtn.addEventListener('click', () => {
             const id = doughRecipeSelect.value;
-            if (id) openDoughDetailsModal(id);
+            if(id) openDoughDetailsModal(id);
         });
-        if (deleteDoughRecipeBtn) deleteDoughRecipeBtn.addEventListener('click', deleteDoughRecipe);
-        
-        document.querySelectorAll('.modal-close-btn').forEach(btn => {
-            btn.type = 'button';
-            btn.addEventListener('click', closeModal);
-        });
+        deleteDoughRecipeBtn.addEventListener('click', deleteDoughRecipe);
         modalContainer.addEventListener('click', (e) => {
-            if (e.target === modalContainer) {
+            if (e.target === modalContainer || e.target.classList.contains('modal-close-btn')) {
                 closeModal();
             }
         });
     }
     function openModal(modalElement) {
-        if (!modalElement) return;
-        allModals.forEach(modal => {
-            if (modal !== modalElement) modal.style.display = 'none';
-        });
         modalElement.style.display = 'block';
         modalContainer.classList.add('visible');
     }
 
+    // --- MODIFICADO: Limpieza de imagen ---
     function closeModal() {
         modalContainer.classList.remove('visible');
         hideIngredientTooltip(); 
         setTimeout(() => {
             allModals.forEach(modal => modal.style.display = 'none');
-            // Añadir eventForm y equipmentForm a la limpieza
-            [recipeForm, inventoryForm, diaryForm, doughRecipeForm, eventForm, equipmentForm].forEach(form => form.reset());
-            
-            // Limpiar IDs y inputs
-            ['recipe-id', 'inv-id', 'diary-id', 'dough-id', 'event-id', 'equip-id', 'ingredient-search', 'equipment-search', 'recipe-image-input'].forEach(id => {
+            [recipeForm, inventoryForm, diaryForm, doughRecipeForm].forEach(form => form.reset());
+            ['recipe-id', 'inv-id', 'diary-id', 'dough-id', 'ingredient-search', 'recipe-image-input'].forEach(id => {
                 const el = document.getElementById(id); if (el) el.value = '';
             });
-            
-            // Limpiar contenedores dinámicos
-            [currentRecipeIngredients, ingredientSearchResults, equipmentSearchResults, doughDetailsContent, eventChecklist].forEach(container => {
+            [currentRecipeIngredients, ingredientSearchResults, doughDetailsContent].forEach(container => {
                 if (container) container.innerHTML = '';
             });
-
-            // LÓGICA DE IMAGEN
-            if(recipeImagePreview) recipeImagePreview.src = DEFAULT_PLACEHOLDER;
-            if(recipeRemoveImageBtn) recipeRemoveImageBtn.style.display = 'none';
-            currentRecipeImageFile = null; 
+            if(ingredientSearchResults) ingredientSearchResults.style.display = 'none';
             
+            // --- LÓGICA DE IMAGEN MODIFICADA ---
+            recipeImagePreview.src = DEFAULT_PLACEHOLDER;
+            recipeRemoveImageBtn.style.display = 'none';
+            currentRecipeImageFile = null; // Limpiar el archivo en lugar de Base64
+            // --- FIN MODIFICACIÓN ---
+
         }, 300);
     }
     
-    // --- Apertura de Modales (Recetas, Inventario, Masa, Diario) ---
+    // --- MODIFICADO: Carga de imagen ---
     function openRecipeModal(recipeId = null) {
-        currentRecipeImageFile = null;
-        const titleEl = document.getElementById('recipe-title');
-        const stepsEl = document.getElementById('recipe-steps');
-        const idEl = document.getElementById('recipe-id');
-
+        currentRecipeImageFile = null; // Resetear siempre
+        
         if (recipeId) {
+            // Modo Edición
             const recipe = appData.recipes.find(r => r.id === recipeId);
-            if (!recipe) {
-                console.warn(`Receta con id ${recipeId} no encontrada.`);
-                return;
-            }
-
+            if (!recipe) return;
             document.getElementById('recipe-modal-title').textContent = 'Editar Receta de Pizza';
-            if (idEl) idEl.value = recipe.id;
-            if (titleEl) titleEl.value = recipe.title ?? '';
-            if (stepsEl) stepsEl.value = recipe.steps ?? '';
-
-            const imageUrl = (recipe.image && recipe.image.length) ? recipe.image : DEFAULT_PLACEHOLDER;
-            if (recipeImagePreview) {
-                recipeImagePreview.src = imageUrl;
-                recipeImagePreview.dataset.currentUrl = recipe.image || "";
-            }
-            if (recipeRemoveImageBtn) recipeRemoveImageBtn.style.display = recipe.image ? 'inline-flex' : 'none';
-
+            document.getElementById('recipe-id').value = recipe.id;
+            document.getElementById('recipe-title').value = recipe.title;
+            document.getElementById('recipe-steps').value = recipe.steps;
+            
+            // Cargar imagen guardada (URL de Storage)
+            const imageUrl = recipe.image || DEFAULT_PLACEHOLDER;
+            recipeImagePreview.src = imageUrl;
+            // Guardar la URL actual por si no la cambian
+            recipeImagePreview.dataset.currentUrl = recipe.image || ""; 
+            
+            recipeRemoveImageBtn.style.display = recipe.image ? 'inline-flex' : 'none';
             renderCurrentRecipeIngredients(Array.isArray(recipe.ingredients) ? recipe.ingredients : []);
         } else {
-            // Nuevo
+            // Modo Creación
             document.getElementById('recipe-modal-title').textContent = 'Nueva Receta de Pizza';
-            if (idEl) idEl.value = '';
-            if (titleEl) titleEl.value = '';
-            if (stepsEl) stepsEl.value = '';
-            if (recipeImagePreview) {
-                recipeImagePreview.src = DEFAULT_PLACEHOLDER;
-                recipeImagePreview.dataset.currentUrl = "";
-            }
-            if (recipeRemoveImageBtn) recipeRemoveImageBtn.style.display = 'none';
+            recipeImagePreview.src = DEFAULT_PLACEHOLDER; 
+            recipeImagePreview.dataset.currentUrl = "";
+            recipeRemoveImageBtn.style.display = 'none';
             renderCurrentRecipeIngredients([]);
         }
-
         openModal(recipeModal);
     }
+    // ... (El resto de modales open...() no cambian)
     function openInventoryModal(itemId = null) {
         if (itemId) {
             const item = appData.inventory.find(i => i.id === itemId);
@@ -339,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!recipe) return;
         document.getElementById('dough-details-title').textContent = escapeHTML(recipe.title);
         doughDetailsContent.innerHTML = `
-            <div class="details-header"><p>Receta guardada el: ${escapeHTML(new Date(recipe.date).toLocaleDateString())}</p></div>
+            <div class="details-header"><p>Receta guardada el: ${escapeHTML(recipe.date)}</p></div>
             <div class="details-grid">
                 <div class="details-grid-item"><strong>${escapeHTML(String(recipe.hydration))}%</strong><span>Hidratación</span></div>
                 <div class="details-grid-item"><strong>${escapeHTML(String(recipe.salt))}%</strong><span>Sal</span></div>
@@ -363,11 +292,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         openModal(doughDetailsModal);
     }
-
-    function loadDoughRecipeToCalculator() {
-        console.log("Llamada a loadDoughRecipeToCalculator");
-    }
-    
     function openDiaryModal(entryId = null) {
         if (entryId) {
             const entry = appData.diary.find(d => d.id === entryId);
@@ -384,86 +308,6 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal(diaryModal);
     }
 
-    function deleteDoughRecipe() {
-        console.log("Llamada a deleteDoughRecipe");
-    }
-    function setupIngredientSearch() {
-        console.log("Buscador de ingredientes configurado");
-    }
-    function setupTooltipEvents() {
-        console.log("Eventos de tooltips configurados");
-    }
-
-    function setupImageUpload() {
-        console.log("Subida de imágenes configurada");
-    }
-    function setupShoppingListControls() {
-        console.log("Controles de la lista de la compra configurados");
-    }
-
-    getLocalData = function getLocalDataFromStorage() {
-        const stored = localStorage.getItem(APP_STORAGE_KEY);
-        if (!stored) return { lastModified: 0 };
-        try {
-            const parsed = JSON.parse(stored);
-            if (parsed && typeof parsed === 'object') {
-                return parsed.lastModified === undefined ? { lastModified: 0, ...parsed } : parsed;
-            }
-        } catch (error) {
-            console.error('Error parsing local data:', error);
-        }
-        return { lastModified: 0 };
-    };
-    function updateSyncStatus(isSynced) {
-        let status;
-        if (isSynced === 'syncing') {
-            status = 'Sincronizando...';
-        } else if (isSynced === true) {
-            status = 'Sincronizado';
-        } else if (isSynced === false) {
-            status = 'Sincronización desactivada';
-        } else {
-            status = 'Estado desconocido';
-        }
-        console.log(`[Sync] ${status}`);
-    }
-    function openEventModal(eventId = null) {
-        renderEventChecklist([]); 
-        if (eventId) {
-            const event = appData.events.find(e => e.id === eventId);
-            if (!event) return;
-            document.getElementById('event-modal-title').textContent = 'Editar Evento';
-            document.getElementById('event-id').value = event.id;
-            document.getElementById('event-title').value = event.title;
-            document.getElementById('event-date').value = event.date;
-            document.getElementById('event-location').value = event.location || '';
-            document.getElementById('event-notes').value = event.notes || '';
-            renderEventChecklist(Array.isArray(event.checklist) ? event.checklist : []);
-        } else {
-            document.getElementById('event-modal-title').textContent = 'Nuevo Evento de Pizza';
-            const now = new Date(Date.now() - (new Date().getTimezoneOffset() * 60000)).toISOString().substring(0, 16);
-            document.getElementById('event-date').value = now;
-            applyDefaultEquipmentToChecklist();
-        }
-        openModal(eventModal);
-    }
-
-    // --- Apertura de Modales (Equipo Predefinido) ---
-    function openEquipmentModal(equipId = null) {
-        if (equipId) {
-            const item = appData.equipment.find(i => i.id === equipId);
-            if (!item) return;
-            document.getElementById('equipment-modal-title').textContent = 'Editar Item de Equipo';
-            document.getElementById('equip-id').value = item.id;
-            document.getElementById('equip-name').value = item.name;
-            document.getElementById('equip-image').value = item.image;
-        } else {
-            document.getElementById('equipment-modal-title').textContent = 'Nuevo Item de Equipo';
-        }
-        openModal(equipmentModal);
-    }
-
-
     // =================================================================
     // --- 4. GESTIÓN DE DATOS (CRUD) --- (MODIFICADO)
     // =================================================================
@@ -471,14 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadData() {
         const savedData = localStorage.getItem(APP_STORAGE_KEY);
         if (savedData) {
-            try {
-                appData = { ...defaultData, ...JSON.parse(savedData) };
-                if (!appData.events) appData.events = [];
-                if (!appData.equipment) appData.equipment = [];
-            } catch (e) {
-                console.error("Error al parsear datos antiguos. Iniciando con data por defecto.");
-                appData = { ...defaultData };
-            }
+            appData = { ...defaultData, ...JSON.parse(savedData) };
         }
     }
 
@@ -492,18 +329,93 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Error: No se pudieron guardar los datos localmente. El almacenamiento podría estar lleno.");
         }
         
-        if (typeof pushToCloud === 'function' && currentUser && syncEnabled) {
+        if (typeof pushToCloud === 'function' && currentUser) {
             updateSyncStatus('syncing');
             pushToCloud(appData); 
         }
     }
 
     function handleCloudUpdate(cloudData) {
-        console.log("Manejando actualización desde la nube.");
-        appData = { ...defaultData, ...cloudData };
-        localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appData));
+        console.log("=== ACTUALIZANDO DATOS DESDE LA NUBE ===");
+        console.log("Datos recibidos de Firestore:");
+        console.log("- Recetas:", cloudData.recipes?.length || 0);
+        console.log("- Inventario:", cloudData.inventory?.length || 0);
+        console.log("- Diario:", cloudData.diary?.length || 0);
+        console.log("- Masas:", cloudData.doughRecipes?.length || 0);
+        
+        // CRÍTICO: Parsear datos si vienen como strings
+        const parseIfNeeded = (data) => {
+            if (!data) return [];
+            
+            // Si ya es un array de objetos, devolverlo tal cual
+            if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+                return data;
+            }
+            
+            // Si es un array de strings, parsear cada uno
+            if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'string') {
+                console.log("Parseando array de strings. Primer elemento:", data[0].substring(0, 100));
+                return data.map(item => {
+                    try {
+                        // Limpiar el string de espacios y saltos de línea innecesarios
+                        const cleaned = item.trim();
+                        return JSON.parse(cleaned);
+                    } catch (e) {
+                        console.error("Error parseando item:", e);
+                        console.error("Item problemático:", item.substring(0, 200));
+                        return null;
+                    }
+                }).filter(item => item !== null);
+            }
+            
+            // Si es un string único, intentar parsearlo
+            if (typeof data === 'string') {
+                try {
+                    const parsed = JSON.parse(data);
+                    return Array.isArray(parsed) ? parsed : [parsed];
+                } catch (e) {
+                    console.error("Error parseando string:", e);
+                    console.error("String problemático:", data.substring(0, 200));
+                    return [];
+                }
+            }
+            
+            // Si es un array vacío o null/undefined
+            return Array.isArray(data) ? data : [];
+        };
+
+        // CRÍTICO: Actualizar appData con los datos de la nube PARSEADOS
+        appData = {
+            lastModified: cloudData.lastModified || Date.now(),
+            recipes: parseIfNeeded(cloudData.recipes),
+            inventory: parseIfNeeded(cloudData.inventory),
+            diary: parseIfNeeded(cloudData.diary),
+            doughRecipes: parseIfNeeded(cloudData.doughRecipes)
+        };
+        
+        console.log("✅ Datos parseados correctamente:");
+        console.log("- Recetas:", appData.recipes.length);
+        console.log("- Inventario:", appData.inventory.length);
+        console.log("- Diario:", appData.diary.length);
+        console.log("- Masas:", appData.doughRecipes.length);
+        
+        if (appData.recipes.length > 0) {
+            console.log("Primera receta parseada:", appData.recipes[0]);
+        }
+        
+        // Guardar en localStorage
+        try {
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appData));
+            console.log("Datos guardados en localStorage.");
+        } catch (error) {
+            console.error("Error guardando en localStorage:", error);
+        }
+        
+        // Re-renderizar toda la interfaz
         renderAll();
-        updateSyncStatus(true);
+        
+        console.log("Interfaz actualizada con datos de la nube.");
+        if (typeof updateSyncStatus === 'function') updateSyncStatus(true);
     }
     
     function getLocalData() {
@@ -511,27 +423,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    // --- MODIFICADO: setupFormHandlers ahora sube a Storage ---
     function setupFormHandlers() {
         // --- Guardar/Actualizar Receta de Pizza (CON STORAGE) ---
-        recipeForm.addEventListener('submit', async (e) => { 
+        recipeForm.addEventListener('submit', async (e) => { // <-- Convertido a async
             e.preventDefault();
+            
+            // Mostrar un spinner o deshabilitar el botón
             const submitButton = recipeForm.querySelector('button[type="submit"]');
             submitButton.disabled = true;
             submitButton.textContent = "Guardando...";
 
             try {
                 const id = document.getElementById('recipe-id').value;
+                
+                // 1. Manejar la imagen
                 let imageUrl = recipeImagePreview.dataset.currentUrl || null;
                 
-                if (currentRecipeImageFile && typeof uploadFileToStorage === 'function') {
+                if (currentRecipeImageFile) {
+                    // 1a. Si hay un *nuevo* archivo, subirlo
                     console.log("Subiendo nuevo archivo a Storage...");
-                    const fileName = `recipe_${Date.now()}_${generateId()}`;
+                    const fileName = `recipe_${Date.now()}_${currentRecipeImageFile.name}`;
+                    // Llama a la función de firebase-sync.js
                     imageUrl = await uploadFileToStorage(currentRecipeImageFile, fileName);
                 
                 } else if (recipeImagePreview.src.includes(DEFAULT_PLACEHOLDER)) {
+                    // 1b. Si la preview es el placeholder, el usuario borró la imagen
                     imageUrl = null; 
                 }
+                // 1c. Si no hay archivo nuevo y la preview no es placeholder, 
+                //     simplemente se conserva la 'imageUrl' que ya teníamos.
 
+                // 2. Recolectar ingredientes
                 const ingredients = [];
                 currentRecipeIngredients.querySelectorAll('li.list-item').forEach(item => {
                     ingredients.push({
@@ -541,14 +464,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
 
+                // 3. Crear objeto final
                 const formData = {
                     title: document.getElementById('recipe-title').value,
                     steps: document.getElementById('recipe-steps').value,
                     date: getTodayDate(),
                     ingredients: ingredients,
-                    image: imageUrl // <-- URL de Storage (o null)
+                    image: imageUrl // <-- Guardar la URL de Storage (o null)
                 };
 
+                // 4. Guardar en appData
                 if (id) {
                     appData.recipes = appData.recipes.map(r => r.id === id ? { ...r, ...formData } : r);
                 } else {
@@ -556,20 +481,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     appData.recipes.push(formData);
                 }
                 
+                // 5. Sincronizar y limpiar
                 saveData(); 
-                renderAll(); 
+                renderRecipes();
+                renderShoppingListBuilder();
                 closeModal();
 
             } catch (error) {
                 console.error("Error al guardar la receta (subida de imagen falló):", error);
                 alert(`Error al guardar: ${error.message}`);
             } finally {
+                // Reactivar el botón
                 submitButton.disabled = false;
                 submitButton.textContent = "Guardar Receta";
             }
         });
 
-        // --- Guardar/Actualizar Inventario --- (sin cambios)
+        // --- (Resto de formularios sin cambios) ---
         inventoryForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = document.getElementById('inv-id').value;
@@ -591,8 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRecipes(); 
             closeModal();
         });
-
-        // --- Guardar/Actualizar Receta de Masa --- (sin cambios)
         doughRecipeForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = document.getElementById('dough-id').value;
@@ -618,8 +544,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderDoughRecipesSelect();
             closeModal();
         });
-        
-        // --- Guardar/Actualizar Diario --- (sin cambios)
         diaryForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const id = document.getElementById('diary-id').value;
@@ -639,69 +563,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderDiary();
             closeModal();
         });
-
-        // --- Guardar/Actualizar Evento ---
-        eventForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const id = document.getElementById('event-id').value;
-            
-            // 1. Recolectar la checklist
-            const checklist = [];
-            eventChecklist.querySelectorAll('li.list-item').forEach(item => {
-                if (item.classList.contains('placeholder-text-small')) return; 
-                checklist.push({
-                    item: item.querySelector('.list-item-name').textContent,
-                    checked: item.querySelector('input[type="checkbox"]').checked
-                });
-            });
-
-            // 2. Crear objeto de datos
-            const formData = {
-                title: document.getElementById('event-title').value,
-                date: document.getElementById('event-date').value,
-                location: document.getElementById('event-location').value,
-                notes: document.getElementById('event-notes').value,
-                checklist: checklist 
-            };
-
-            // 3. Guardar en appData
-            if (id) {
-                appData.events = appData.events.map(ev => ev.id === id ? { ...ev, ...formData } : ev);
-            } else {
-                formData.id = generateId();
-                appData.events.push(formData);
-            }
-            
-            // Ordenar por fecha (el más cercano/futuro primero)
-            appData.events.sort((a, b) => new Date(a.date) - new Date(b.date)); 
-            
-            saveData(); 
-            renderEvents(); 
-            closeModal();
-        });
-        
-        // --- Guardar/Actualizar Item de Equipo ---
-        equipmentForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const id = document.getElementById('equip-id').value;
-            const formData = {
-                name: document.getElementById('equip-name').value,
-                image: document.getElementById('equip-image').value || DEFAULT_PLACEHOLDER,
-            };
-
-            if (id) {
-                appData.equipment = appData.equipment.map(item => item.id === id ? { ...item, ...formData } : item);
-            } else {
-                formData.id = generateId();
-                formData.isAutoAdd = false;
-                appData.equipment.push(formData);
-            }
-            
-            appData.equipment.sort((a, b) => a.name.localeCompare(b.name));
-            saveData();
-            renderEquipment(); 
-            closeModal();
-        });
     }
 
     // =================================================================
@@ -713,21 +574,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!appData.inventory) appData.inventory = [];
         if (!appData.diary) appData.diary = [];
         if (!appData.doughRecipes) appData.doughRecipes = [];
-        if (!appData.events) appData.events = []; 
-        if (!appData.equipment) appData.equipment = []; 
-        
         renderRecipes();
         renderInventory();
         renderDiary();
         renderDoughRecipesSelect();
         renderShoppingListBuilder();
-        renderEvents(); 
-        renderEquipment(); // <--- RENDERIZAR EQUIPO
-        updatePizzaTotal(); // <--- ACTUALIZAR TOTAL AL INICIO
     }
     function showPlaceholder(container, message) {
         container.innerHTML = `<div class="placeholder-text">${message}</div>`;
     }
+    
+    // --- MODIFICADO: RenderRecipes ahora usa la URL de Storage ---
     function renderRecipes() {
         recipeList.innerHTML = '';
         if (!appData.recipes || appData.recipes.length === 0) {
@@ -738,6 +595,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!recipe) return; 
             const card = document.createElement('div');
             card.className = 'card recipe-card';
+            
+            // ... (lógica de ingredientes no cambia)
             let ingredientsHTML = 'N/A';
             if (Array.isArray(recipe.ingredients)) {
                 ingredientsHTML = recipe.ingredients.map(item => {
@@ -751,7 +610,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (typeof recipe.ingredients === 'string' && recipe.ingredients) {
                 ingredientsHTML = `<p class="text-block" style="opacity: 0.7;">(Antiguo formato) ${escapeHTML(recipe.ingredients.replace(/\n/g, '<br>'))}</p>`;
             }
+            
+            // --- LÓGICA DE IMAGEN MODIFICADA ---
+            // 'recipe.image' ahora es una URL https://... o null/undefined
             const imageSrc = recipe.image ? escapeHTML(recipe.image) : DEFAULT_PLACEHOLDER;
+            // --- FIN MODIFICACIÓN ---
+
             card.innerHTML = `
                 <img src="${imageSrc}" alt="${escapeHTML(recipe.title)}" class="card-img">
                 <div class="card-content">
@@ -771,6 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
             recipeList.appendChild(card);
         });
     }
+    // ... (renderInventory, renderDoughRecipesSelect sin cambios)
     function renderInventory() {
         inventoryList.innerHTML = '';
         if (!appData.inventory || appData.inventory.length === 0) {
@@ -795,9 +660,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function renderDoughRecipesSelect() {
         doughRecipeSelect.innerHTML = '<option value="">-- Seleccionar Receta --</option>'; 
-        // Asegurarse de que el selector de COMPRAS también se actualice
-        shoppingDoughSelect.innerHTML = '<option value="">-- No Incluir Masa --</option>';
-        
         if (!appData.doughRecipes) return;
         appData.doughRecipes.forEach(recipe => {
             if (!recipe) return;
@@ -805,9 +667,9 @@ document.addEventListener('DOMContentLoaded', () => {
             option.value = recipe.id;
             option.textContent = escapeHTML(recipe.title);
             doughRecipeSelect.appendChild(option);
-            shoppingDoughSelect.appendChild(option.cloneNode(true)); // Clonar para el selector de compras
         });
     }
+    // --- MODIFICADO: renderShoppingListBuilder ahora usa la URL de Storage ---
     function renderShoppingListBuilder() {
         shoppingListBuilder.innerHTML = '';
         if (!appData.recipes || appData.recipes.length === 0) {
@@ -827,6 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
             shoppingListBuilder.appendChild(row);
         });
     }
+    // ... (renderDiary, renderCurrentRecipeIngredients sin cambios)
     function renderDiary() {
         diaryList.innerHTML = '';
         if (!appData.diary || appData.diary.length === 0) {
@@ -851,136 +714,23 @@ document.addEventListener('DOMContentLoaded', () => {
             diaryList.appendChild(item);
         });
     }
-
-    // --- Renderizado de Eventos ---
-    function renderEvents() {
-        eventList.innerHTML = '';
-        
-        if (!appData.events || appData.events.length === 0) {
-            showPlaceholder(eventList, 'Aún no tienes eventos planificados. ¡Crea uno para tu próxima pizza party!');
-            return;
-        }
-        
-        const now = new Date();
-        const futureEvents = appData.events.filter(e => new Date(e.date) >= now);
-        const pastEvents = appData.events.filter(e => new Date(e.date) < now).sort((a, b) => new Date(b.date) - new Date(a.date)); 
-
-        
-        const createEventCard = (event, isPast) => {
-            const card = document.createElement('div');
-            card.className = `card event-card ${isPast ? 'past-event' : ''}`;
-            card.dataset.id = event.id;
-            
-            const eventDate = new Date(event.date);
-            const formattedDate = eventDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-            const formattedTime = eventDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-            const totalItems = Array.isArray(event.checklist) ? event.checklist.length : 0;
-            const checkedItems = Array.isArray(event.checklist) ? event.checklist.filter(item => item.checked).length : 0;
-            const progressText = totalItems > 0 ? `${checkedItems}/${totalItems} elementos listos` : 'Sin checklist';
-            const progressPercent = totalItems > 0 ? (checkedItems / totalItems) * 100 : 0;
-            
-            const cardHtml = `
-                <div class="card-content">
-                    <div class="event-details">
-                        <div class="event-date-box">
-                            <span class="day">${eventDate.getDate()}</span>
-                            <span class="month">${eventDate.toLocaleString('es-ES', { month: 'short' }).toUpperCase().replace('.', '')}</span>
-                        </div>
-                        <div>
-                            <h3>${escapeHTML(event.title)} ${isPast ? ' (Pasado)' : ''}</h3>
-                            <p class="event-time-location">📍 ${escapeHTML(event.location) || 'Lugar no especificado'}</p>
-                            <p class="event-time-location">⏰ ${formattedTime} del ${formattedDate}</p>
-                        </div>
-                    </div>
-                    ${event.notes ? `<div class="event-notes-preview">
-                        <strong>Notas:</strong>
-                        <p>${escapeHTML(event.notes).substring(0, 150)}${event.notes.length > 150 ? '...' : ''}</p>
-                    </div>` : ''}
-                    <div class="event-checklist-progress">
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: ${progressPercent}%;"></div>
-                        </div>
-                        <span class="progress-text">${progressText}</span>
-                    </div>
-                </div>
-                <div class="card-actions">
-                    <button class="btn btn-light btn-small" data-id="${event.id}" data-action="edit-event">Editar</button>
-                    <button class="btn btn-danger btn-small" data-id="${event.id}" data-action="delete-event">Borrar</button>
-                </div>
-            `;
-            card.innerHTML = cardHtml;
-            return card;
-        };
-        
-        // 1. Renderizar Eventos Futuros
-        if (futureEvents.length > 0) {
-            const header = document.createElement('h3');
-            header.textContent = 'Próximos Eventos';
-            header.style.cssText = 'width: 100%; grid-column: 1 / -1; margin-top: 1rem;';
-            eventList.appendChild(header);
-            futureEvents.forEach(event => eventList.appendChild(createEventCard(event, false)));
-        }
-        
-        // 2. Renderizar Eventos Pasados
-        if (pastEvents.length > 0) {
-            const header = document.createElement('h3');
-            header.textContent = 'Eventos Anteriores';
-            header.style.cssText = 'width: 100%; grid-column: 1 / -1; margin-top: 2rem; border-top: 1px solid var(--color-border); padding-top: 1rem;';
-            eventList.appendChild(header);
-            pastEvents.forEach(event => eventList.appendChild(createEventCard(event, true)));
-        }
-    }
-
-    // --- Renderizado de Equipo Predefinido ---
-    function renderEquipment() {
-        equipmentList.innerHTML = '';
-        if (!appData.equipment || appData.equipment.length === 0) {
-            showPlaceholder(equipmentList, 'Aún no tienes items de equipo predefinidos. Añade uno para tus checklists.');
-            return;
-        }
-
-        appData.equipment.forEach(item => {
-            if (!item) return;
-            const card = document.createElement('div');
-            card.className = 'card equipment-card';
-            card.dataset.id = item.id;
-            const defaultFlag = item.isAutoAdd ? '<span class="equipment-default-flag">Se añade automáticamente</span>' : '';
-
-            card.innerHTML = `
-                <img src="${escapeHTML(item.image) || DEFAULT_PLACEHOLDER}" alt="${escapeHTML(item.name)}" class="equipment-card-image">
-                <span class="equipment-card-name">${escapeHTML(item.name)}</span>
-                ${defaultFlag}
-                <div class="card-actions">
-                    <button class="btn btn-secondary btn-small" data-id="${item.id}" data-action="toggle-equipment-default">
-                        ${item.isAutoAdd ? 'Quitar de nuevos eventos' : 'Usar en nuevos eventos'}
-                    </button>
-                    <button class="btn btn-light btn-small" data-id="${item.id}" data-action="edit-equipment">Editar</button>
-                    <button class="btn btn-danger btn-small" data-id="${item.id}" data-action="delete-equipment">Borrar</button>
-                </div>
-            `;
-            equipmentList.appendChild(card);
-        });
-    }
-
-    function renderCurrentRecipeIngredients(ingredients = []) {
-        if (!currentRecipeIngredients) return;
-        if (!Array.isArray(ingredients) || ingredients.length === 0) {
-            currentRecipeIngredients.innerHTML = '<li class="placeholder-text-small" style="list-style-type: none;">Añade ingredientes usando el buscador de arriba.</li>';
-            return;
-        }
-
+    function renderCurrentRecipeIngredients(ingredients) {
         currentRecipeIngredients.innerHTML = '';
+        if (!ingredients || ingredients.length === 0) {
+            currentRecipeIngredients.innerHTML = '<li class="placeholder-text-small" style="list-style-type: none; font-size: 0.9em; color: var(--color-text-alt);">Añade ingredientes desde el buscador.</li>';
+            return;
+        }
         ingredients.forEach(item => {
-            const base = item?.inventoryId ? appData.inventory.find(i => i.id === item.inventoryId) : null;
+            const base = appData.inventory.find(i => i.id === item.inventoryId);
+            if (!base) return;
             const li = document.createElement('li');
             li.className = 'list-item';
-            if (item?.inventoryId) li.dataset.inventoryId = item.inventoryId;
+            li.dataset.inventoryId = item.inventoryId;
             li.innerHTML = `
-                <span class="list-item-name"${item?.inventoryId ? ` data-inventory-id="${item.inventoryId}"` : ''}>${escapeHTML(base?.name || item?.name || 'Ingrediente pendiente')}</span>
+                <span class="list-item-name" data-inventory-id="${item.inventoryId}">${escapeHTML(base.name)}</span>
                 <div class="ingredient-quantity-input">
-                    <input type="number" value="${item?.quantity ?? 0}" min="0" step="0.1">
-                    <input type="text" value="${escapeHTML(item?.unit || 'g')}">
+                    <input type="number" value="${escapeHTML(String(item.quantity))}" min="0" step="0.1">
+                    <input type="text" value="${escapeHTML(item.unit)}">
                 </div>
                 <button type="button" class="btn btn-danger btn-small" data-action="delete-recipe-ingredient">&times;</button>
             `;
@@ -988,270 +738,269 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Renderizado de Checklist (dentro del modal) ---
-    function renderEventChecklist(checklist) {
-        eventChecklist.innerHTML = '';
-        
-        if (!checklist || checklist.length === 0) {
-            eventChecklist.innerHTML = '<li class="placeholder-text-small" style="list-style-type: none; font-size: 0.9em; color: var(--color-text-alt);">Añade equipos, ingredientes o elementos a llevar.</li>';
-            return;
-        }
-        
-        checklist.sort((a, b) => (a.checked === b.checked) ? 0 : a.checked ? 1 : -1); 
-
-        checklist.forEach(item => {
-            const li = document.createElement('li');
-            li.className = 'list-item';
-            if (item.checked) li.classList.add('checked'); 
-
-            li.innerHTML = `
-                <label class="checklist-label">
-                    <input type="checkbox" ${item.checked ? 'checked' : ''} data-action="toggle-checklist-item">
-                    <span class="list-item-name">${escapeHTML(item.item)}</span>
-                </label>
-                <button type="button" class="btn btn-danger btn-icon-only btn-small" data-action="delete-checklist-item" title="Borrar Item">&times;</button>
-            `;
-            eventChecklist.appendChild(li);
-        });
-    }
-
-    function applyDefaultEquipmentToChecklist() {
-        if (!Array.isArray(appData.equipment)) return;
-        const defaults = appData.equipment.filter(item => item.isAutoAdd);
-        defaults.forEach(item => addEquipmentItemToChecklist(item));
-    }
-
     // =================================================================
-    // --- 6. GESTIÓN DE EVENTOS (Delegados y UI) --- (MODIFICADO)
+    // --- 6. GESTIÓN DE EVENTOS (Delegados y UI) --- (Sin cambios)
     // =================================================================
-
     function setupEventListeners() {
-        // Delegate listener principal para editar/borrar (más robusto: cualquier elemento con data-action)
         document.body.addEventListener('click', (e) => {
-            const target = e.target.closest('[data-action]');
+            const target = e.target.closest('button[data-action]');
             if (!target) return;
             const action = target.dataset.action;
             const id = target.closest('[data-id]')?.dataset.id;
 
             switch (action) {
-                // Editar Modales
-                case 'edit-recipe':
-                    // Ensure an ID is found before attempting to open the modal for editing.
-                    if (id) {
-                        openRecipeModal(id);
-                    } else {
-                        console.warn('Action "edit-recipe" was triggered, but no "data-id" was found on the element or its parents.');
-                    }
-                    break;
-                case 'edit-inventory': if (id) openInventoryModal(id); break;
-                case 'edit-diary': if (id) openDiaryModal(id); break;
+                case 'edit-recipe': openRecipeModal(id); break;
+                case 'edit-inventory': openInventoryModal(id); break;
+                case 'edit-diary': openDiaryModal(id); break;
                 case 'edit-dough-recipe':
-                    closeModal();
-                    setTimeout(() => { if (id) openDoughRecipeModal(id); }, 350);
+                    closeModal(); 
+                    setTimeout(() => openDoughRecipeModal(id), 350);
                     break;
-                case 'edit-event': if (id) openEventModal(id); break;
-                case 'edit-equipment': if (id) openEquipmentModal(id); break;
-
-                // Borrar
                 case 'delete-recipe':
-                    if (!id) return;
                     if (confirm('¿Borrar esta receta?')) {
+                        // TODO: Borrar imagen de Storage si es necesario
                         appData.recipes = appData.recipes.filter(r => r.id !== id);
-                        saveData();
-                        renderAll();
+                        saveData(); 
+                        renderRecipes();
+                        renderShoppingListBuilder();
                     }
                     break;
                 case 'delete-inventory':
-                    if (!id) return;
                     if (confirm('¿Borrar este ingrediente base?')) {
                         appData.inventory = appData.inventory.filter(i => i.id !== id);
-                        saveData();
-                        renderAll();
+                        saveData(); 
+                        renderInventory();
+                        renderRecipes();
                     }
                     break;
                 case 'delete-diary':
-                    if (!id) return;
                     if (confirm('¿Borrar esta entrada?')) {
                         appData.diary = appData.diary.filter(d => d.id !== id);
-                        saveData();
-                        renderAll();
-                    }
-                    break;
-                case 'delete-event':
-                    if (!id) return;
-                    if (confirm('¿Borrar este evento?')) {
-                        appData.events = appData.events.filter(e => e.id !== id);
-                        saveData();
-                        renderAll();
-                    }
-                    break;
-                case 'delete-equipment':
-                    if (!id) return;
-                    if (confirm('¿Borrar este item de equipo predefinido?')) {
-                        appData.equipment = appData.equipment.filter(e => e.id !== id);
-                        saveData();
-                        renderAll();
-                    }
-                    break;
-                case 'toggle-equipment-default':
-                    if (!id) break;
-                    {
-                        const equipment = appData.equipment.find(item => item.id === id);
-                        if (!equipment) break;
-                        equipment.isAutoAdd = !equipment.isAutoAdd;
-                        saveData();
-                        renderEquipment();
+                        saveData(); 
+                        renderDiary();
                     }
                     break;
                 case 'delete-recipe-ingredient':
-                    {
-                        const li = target.closest('li.list-item');
-                        if (li) li.remove();
-                        if (currentRecipeIngredients.children.length === 0) {
-                            currentRecipeIngredients.innerHTML = '<li class="placeholder-text-small" ...>Añade ingredientes...</li>';
-                        }
+                    target.closest('li.list-item').remove();
+                    if (currentRecipeIngredients.children.length === 0) {
+                        currentRecipeIngredients.innerHTML = '<li class="placeholder-text-small" ...>Añade ingredientes...</li>';
                     }
                     break;
             }
         });
-        
-        // --- LÓGICA CHECKLIST DENTRO DEL MODAL DE EVENTO ---
-        addChecklistItemBtn.addEventListener('click', () => {
-            const itemText = newChecklistItemInput.value.trim();
-            if (!itemText) return;
-
-            if (eventChecklist.querySelector('.placeholder-text-small')) {
-                eventChecklist.innerHTML = '';
-            }
-
-            const existingEquipment = Array.isArray(appData.equipment)
-                ? appData.equipment.find(eq => eq.name.toLowerCase() === itemText.toLowerCase())
-                : null;
-            if (!existingEquipment) {
-                if (!Array.isArray(appData.equipment)) appData.equipment = [];
-                appData.equipment.push({
-                    id: generateId(),
-                    name: itemText,
-                    image: DEFAULT_PLACEHOLDER,
-                    isAutoAdd: false
-                });
-                appData.equipment.sort((a, b) => a.name.localeCompare(b.name));
-                renderEquipment();
-                saveData();
-            }
-
-            const li = document.createElement('li');
-            li.className = 'list-item';
-            li.innerHTML = `
-                <label class="checklist-label">
-                    <input type="checkbox" data-action="toggle-checklist-item">
-                    <span class="list-item-name">${escapeHTML(itemText)}</span>
-                </label>
-                <button type="button" class="btn btn-danger btn-icon-only btn-small" data-action="delete-checklist-item" title="Borrar Item">&times;</button>
-            `;
-            eventChecklist.appendChild(li);
-            newChecklistItemInput.value = '';
-            newChecklistItemInput.focus();
-        });
-        
-        // Delegate listeners para la checklist (Borrar y Marcar)
-        eventModal.addEventListener('click', (e) => {
-            const action = e.target.dataset.action;
-            const listItem = e.target.closest('li.list-item');
-            
-            if (action === 'delete-checklist-item' && listItem) {
-                listItem.remove();
-                if (eventChecklist.children.length === 0) {
-                    renderEventChecklist([]);
-                }
-            }
-        });
-
-        eventModal.addEventListener('change', (e) => {
-            if (e.target.dataset.action === 'toggle-checklist-item') {
-                const listItem = e.target.closest('li.list-item');
-                if (listItem) {
-                    listItem.classList.toggle('checked', e.target.checked); 
-                }
-            }
-        });
-        // --- FIN LÓGICA CHECKLIST ---
-
-
         generateShoppingListBtn.addEventListener('click', generateShoppingList);
-        exportShoppingListBtn.addEventListener('click', exportShoppingList); // <--- NUEVO
     }
-    
-    // --- Búsqueda de Equipo Predefinido (para Eventos) ---
-    function setupEquipmentSearch() {
-        equipmentSearchInput.addEventListener('keyup', () => {
-            const query = equipmentSearchInput.value.toLowerCase();
+    function loadDoughRecipeToCalculator() {
+        const id = doughRecipeSelect.value;
+        if (!id) return;
+        const recipe = appData.doughRecipes.find(r => r.id === id);
+        if (!recipe) return;
+        document.getElementById('calc-hidratacion').value = recipe.hydration;
+        document.getElementById('calc-sal').value = recipe.salt;
+        document.getElementById('calc-levadura').value = recipe.yeast;
+    }
+    function deleteDoughRecipe() {
+        const id = doughRecipeSelect.value;
+        if (!id) return;
+        if (confirm(`¿Seguro que quieres borrar la receta "${doughRecipeSelect.options[doughRecipeSelect.selectedIndex].text}"?`)) {
+            appData.doughRecipes = appData.doughRecipes.filter(r => r.id !== id);
+            saveData(); 
+            renderDoughRecipesSelect();
+        }
+    }
+    function setupIngredientSearch() {
+        ingredientSearch.addEventListener('keyup', (e) => {
+            const query = e.target.value.toLowerCase();
             if (query.length < 1) {
-                equipmentSearchResults.style.display = 'none';
+                ingredientSearchResults.style.display = 'none';
                 return;
             }
-
-            const results = appData.equipment.filter(item => item.name.toLowerCase().includes(query));
-            equipmentSearchResults.innerHTML = '';
+            const results = appData.inventory.filter(item => item.name.toLowerCase().includes(query));
+            ingredientSearchResults.innerHTML = '';
             
             if (results.length > 0) {
                 results.forEach(item => {
-                    const button = document.createElement('button');
-                    button.type = 'button';
-                    button.className = 'btn btn-light btn-small';
-                    button.dataset.id = item.id;
-                    button.textContent = escapeHTML(item.name);
-                    button.addEventListener('click', () => {
-                        addEquipmentItemToChecklist(item);
-                        equipmentSearchInput.value = '';
-                        equipmentSearchResults.style.display = 'none';
-                    });
-                    equipmentSearchResults.appendChild(button);
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    div.dataset.id = item.id;
+                    div.innerHTML = `<img src="${escapeHTML(item.image) || DEFAULT_PLACEHOLDER}" alt=""><span>${escapeHTML(item.name)}</span>`;
+                    ingredientSearchResults.appendChild(div);
                 });
-                equipmentSearchResults.style.display = 'flex'; // Usar flex para los botones
-                equipmentSearchResults.style.flexWrap = 'wrap';
-                equipmentSearchResults.style.gap = '5px';
+                ingredientSearchResults.style.display = 'block';
             } else {
-                equipmentSearchResults.style.display = 'none';
+                ingredientSearchResults.style.display = 'none';
             }
         });
-    }
-
-    function setupEquipmentPresetsControl() {
-        if (!loadEquipmentPresetsBtn) return;
-        loadEquipmentPresetsBtn.addEventListener('click', () => {
-            if (!Array.isArray(appData.equipment)) appData.equipment = [];
-            let added = 0;
-            DEFAULT_EQUIPMENT_PRESETS.forEach(preset => {
-                const existing = appData.equipment.find(item => item.name.toLowerCase() === preset.name.toLowerCase());
-                if (existing) {
-                    if (!existing.isAutoAdd) {
-                        existing.isAutoAdd = true;
-                        added++;
-                    }
-                    return;
-                }
-                appData.equipment.push({
-                    id: generateId(),
-                    name: preset.name,
-                    image: preset.image,
-                    isAutoAdd: true
-                });
-                added++;
-            });
-            if (added === 0) {
-                alert('Todos los elementos sugeridos ya están disponibles.');
+        ingredientSearchResults.addEventListener('click', (e) => {
+            const itemEl = e.target.closest('.search-result-item');
+            if (!itemEl) return;
+            const id = itemEl.dataset.id;
+            if (currentRecipeIngredients.querySelector(`li[data-inventory-id="${id}"]`)) {
+                ingredientSearch.value = '';
+                ingredientSearchResults.style.display = 'none';
                 return;
             }
-            appData.equipment.sort((a, b) => a.name.localeCompare(b.name));
-            saveData();
-            renderEquipment();
-            alert('Se importaron los elementos sugeridos. Puedes editarlos o desactivarlos.');
+            if (currentRecipeIngredients.querySelector('.placeholder-text-small')) {
+                currentRecipeIngredients.innerHTML = '';
+            }
+            const base = appData.inventory.find(i => i.id === id);
+            if (base) {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.dataset.inventoryId = id;
+                li.innerHTML = `
+                    <span class="list-item-name" data-inventory-id="${id}">${escapeHTML(base.name)}</span>
+                    <div class="ingredient-quantity-input">
+                        <input type="number" value="100" min="0" step="0.1">
+                        <input type="text" value="g">
+                    </div>
+                    <button type="button" class="btn btn-danger btn-small" data-action="delete-recipe-ingredient">&times;</button>
+                `;
+                currentRecipeIngredients.appendChild(li);
+            }
+            ingredientSearch.value = '';
+            ingredientSearchResults.style.display = 'none';
+        });
+    }
+    function setupTooltipEvents() {
+        let currentTarget = null;
+        const shoppingTab = document.getElementById('compras');
+        document.body.addEventListener('mouseover', (e) => {
+            let target, id, item;
+            if (recipeModal.contains(e.target)) {
+                target = e.target.closest('[data-inventory-id]');
+                if (!target || target === currentTarget) return;
+                id = target.dataset.inventoryId;
+                item = appData.inventory.find(i => i.id === id);
+            } else if (shoppingTab.contains(e.target)) {
+                target = e.target.closest('[data-recipe-id]');
+                if (!target || target === currentTarget) return;
+                id = target.dataset.recipeId;
+                item = appData.recipes.find(r => r.id === id);
+            } else {
+                if (ingredientTooltip.classList.contains('visible')) {
+                    hideIngredientTooltip();
+                }
+                return;
+            }
+            if (!item) return;
+            currentTarget = target;
+            ingredientTooltip.innerHTML = `
+                <img src="${escapeHTML(item.image) || DEFAULT_PLACEHOLDER}" alt="">
+                <span>${escapeHTML(item.name || item.title)}</span>
+            `;
+            positionTooltip(e);
+            ingredientTooltip.classList.add('visible');
+        });
+        document.body.addEventListener('mouseout', (e) => {
+            if (e.target.closest('[data-inventory-id]') || e.target.closest('[data-recipe-id]')) {
+                 hideIngredientTooltip();
+                 currentTarget = null;
+            }
+        });
+        recipeModal.addEventListener('scroll', () => positionTooltip(null, recipeModal), { passive: true });
+        shoppingTab.addEventListener('scroll', () => positionTooltip(null, shoppingTab), { passive: true });
+    }
+    function positionTooltip(e, container = null) {
+        if (!modalContainer.classList.contains('visible') && !container) {
+            hideIngredientTooltip();
+            return;
+        }
+        let referenceRect;
+        if (container) {
+            referenceRect = container.getBoundingClientRect();
+        } else {
+            referenceRect = recipeModal.style.display === 'block' 
+                ? recipeModal.getBoundingClientRect() 
+                : document.getElementById('compras').querySelector('.form-container').getBoundingClientRect();
+        }
+        if (!referenceRect) return;
+        const containerRect = modalContainer.classList.contains('visible') 
+            ? modalContainer.getBoundingClientRect()
+            : document.body.getBoundingClientRect();
+        ingredientTooltip.style.left = `${referenceRect.right + 10}px`;
+        ingredientTooltip.style.top = `${referenceRect.top + (referenceRect.height / 2)}px`;
+        if (referenceRect.right + 10 + 250 > containerRect.width) {
+             hideIngredientTooltip();
+        } else {
+            if (ingredientTooltip.classList.contains('visible')) {
+                ingredientTooltip.style.display = 'flex';
+            }
+        }
+    }
+    function hideIngredientTooltip() {
+        ingredientTooltip.classList.remove('visible');
+    }
+
+    // --- MODIFICADO: setupImageUpload ahora comprime y guarda un Archivo (Blob) ---
+    function setupImageUpload() {
+        recipeImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 10 * 1024 * 1024) { // Límite de 10MB para el original
+                alert('La imagen es muy grande (Máx 10MB). Se comprimirá.');
+            }
+
+            // Comprimir la imagen antes de guardarla
+            compressImage(file, 800, 0.7, (compressedBlob) => {
+                currentRecipeImageFile = compressedBlob; // Guardar el Blob (archivo)
+                recipeImagePreview.src = URL.createObjectURL(compressedBlob); // Mostrar preview
+                recipeRemoveImageBtn.style.display = 'inline-flex';
+            });
+        });
+
+        recipeRemoveImageBtn.addEventListener('click', () => {
+            currentRecipeImageFile = null;
+            recipeImageInput.value = '';
+            recipeImagePreview.src = DEFAULT_PLACEHOLDER;
+            recipeRemoveImageBtn.style.display = 'none';
         });
     }
 
+    /**
+     * Comprime un Archivo de imagen.
+     * @param {File} file - El archivo original.
+     * @param {number} maxWidth - Ancho máximo.
+     * @param {number} quality - Calidad (0 a 1).
+     * @param {function(Blob)} callback - Función llamada con el Blob comprimido.
+     */
+    function compressImage(file, maxWidth, quality, callback) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convertir canvas a Blob
+                canvas.toBlob((blob) => {
+                    callback(blob);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => {
+                console.error("No se pudo cargar la imagen para comprimir.");
+                alert("Error: El archivo seleccionado no parece ser una imagen válida.");
+            };
+        };
+        reader.onerror = (error) => console.error("Error leyendo archivo:", error);
+        reader.readAsDataURL(file); // Leer el archivo para obtener el Base64 temporal
+    }
+
+
     // =================================================================
-    // --- 7. LÓGICA DE CALCULADORA Y COMPRAS --- (MODIFICADO)
+    // --- 7. LÓGICA DE CALCULADORA Y COMPRAS --- (Sin cambios)
     // =================================================================
     function setupCalculator() {
         calculateBtn.addEventListener('click', () => {
@@ -1285,72 +1034,20 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
     }
-
-    // NUEVO: Función para Exportar la Lista a TXT
-    function exportShoppingList() {
-        const listItems = shoppingListResults.querySelectorAll('li.list-item:not([style*="background"])');
-        const totalCostEl = shoppingListResults.querySelector('li.list-item[style*="background"]');
-        const totalPizzas = updatePizzaTotal();
-        const doughRecipeName = shoppingDoughSelect.options[shoppingDoughSelect.selectedIndex]?.text || 'No Incluida';
-        
-        let textContent = `--- LISTA DE COMPRAS PIZZAPP PRO ---\n`;
-        textContent += `Fecha de Creación: ${getTodayDate()}\n`;
-        textContent += `Total de Pizzas a Preparar: ${totalPizzas}\n`;
-        textContent += `Receta de Masa Usada: ${doughRecipeName}\n\n`;
-        textContent += `[ INGREDIENTES NECESARIOS ]\n`;
-        
-        listItems.forEach(li => {
-            const name = li.querySelector('.item-details span:first-child').textContent.trim();
-            const quantity = li.querySelector('.item-total-quantity').textContent.trim();
-            const price = li.querySelector('.item-total-price').textContent.trim();
-            textContent += `- ${name}: ${quantity} (Costo: ${price})\n`;
-        });
-        
-        if (totalCostEl) {
-            const totalText = totalCostEl.textContent.trim().replace(/\s+/g, ' ').replace('COSTO TOTAL ESTIMADO', 'Costo Total Estimado');
-            textContent += `\n${totalText}\n`;
-        }
-        
-        textContent += `\n---------------------------------------\n`;
-        
-        // Descargar el archivo
-        const dataBlob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(dataBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `lista_compras_${getTodayDate()}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-        a.remove();
-    }
-    
     function generateShoppingList() {
-        const totalPizzas = updatePizzaTotal();
         const totalIngredients = {}; 
-        
-        if (totalPizzas === 0) {
-            shoppingListResults.innerHTML = '<li class="placeholder-text-small" style="list-style-type: none;">Selecciona la cantidad de pizzas...</li>';
-            exportShoppingListBtn.style.display = 'none';
-            return;
-        }
-
-        // 1. CALCULAR INGREDIENTES DE TOPPINGS Y SALSA
         shoppingListBuilder.querySelectorAll('.shopping-recipe-row').forEach(row => {
             const recipeId = row.dataset.recipeId;
             const quantity = parseFloat(row.querySelector('input').value) || 0;
             if (quantity === 0) return;
-
             const recipe = appData.recipes.find(r => r.id === recipeId);
             if (!recipe || !Array.isArray(recipe.ingredients)) return;
-
             recipe.ingredients.forEach(item => {
                 const baseItem = appData.inventory.find(i => i.id === item.inventoryId);
                 if (!baseItem) return;
-
                 if (!totalIngredients[item.inventoryId]) {
                     totalIngredients[item.inventoryId] = { baseItem: baseItem, units: {} };
                 }
-
                 const unit = item.unit.toLowerCase();
                 if (!totalIngredients[item.inventoryId].units[unit]) {
                     totalIngredients[item.inventoryId].units[unit] = 0;
@@ -1358,67 +1055,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalIngredients[item.inventoryId].units[unit] += item.quantity * quantity;
             });
         });
-
-        // 2. CALCULAR INGREDIENTES DE MASA
-        const doughRecipeId = shoppingDoughSelect.value;
-        if (doughRecipeId && totalPizzas > 0) {
-            const doughRecipe = appData.doughRecipes.find(r => r.id === doughRecipeId);
-            const pesoMasaPorBola = 280; // Asumir 280g por bola estándar
-            const pesoTotalMasa = totalPizzas * pesoMasaPorBola;
-
-            if (doughRecipe) {
-                const { hydration, salt, yeast } = doughRecipe;
-                const totalPartes = 100 + hydration + salt + yeast;
-                
-                // Cálculo de ingredientes en gramos
-                const harina = (pesoTotalMasa * 100) / totalPartes;
-                const salG = (harina * salt) / 100;
-                const levaduraG = (harina * yeast) / 100;
-
-                // Identificar los ingredientes de la masa por nombre (asumiendo nombres comunes)
-                const flourItem = appData.inventory.find(item => item.name.toLowerCase().includes('harina'));
-                const saltItem = appData.inventory.find(item => item.name.toLowerCase().includes('sal'));
-                const yeastItem = appData.inventory.find(item => item.name.toLowerCase().includes('levadura'));
-                
-                // Añadir Harina (CRÍTICO)
-                if (flourItem) {
-                    if (!totalIngredients[flourItem.id]) {
-                        totalIngredients[flourItem.id] = { baseItem: flourItem, units: {} };
-                    }
-                    if (!totalIngredients[flourItem.id].units['g']) totalIngredients[flourItem.id].units['g'] = 0;
-                    totalIngredients[flourItem.id].units['g'] += harina;
-                }
-                
-                // Añadir Sal (Si existe y se usa)
-                if (saltItem && salG > 0) {
-                    if (!totalIngredients[saltItem.id]) {
-                        totalIngredients[saltItem.id] = { baseItem: saltItem, units: {} };
-                    }
-                    if (!totalIngredients[saltItem.id].units['g']) totalIngredients[saltItem.id].units['g'] = 0;
-                    totalIngredients[saltItem.id].units['g'] += salG;
-                }
-                
-                // Añadir Levadura (Si existe y se usa)
-                if (yeastItem && levaduraG > 0) {
-                    if (!totalIngredients[yeastItem.id]) {
-                        totalIngredients[yeastItem.id] = { baseItem: yeastItem, units: {} };
-                    }
-                    if (!totalIngredients[yeastItem.id].units['g']) totalIngredients[yeastItem.id].units['g'] = 0;
-                    totalIngredients[yeastItem.id].units['g'] += levaduraG;
-                }
-                // El agua se omite.
-            }
-        }
-
-
-        // 3. RENDERIZAR RESULTADOS
         shoppingListResults.innerHTML = '';
         if (Object.keys(totalIngredients).length === 0) {
             shoppingListResults.innerHTML = '<li class="placeholder-text-small" ...>Selecciona la cantidad de pizzas...</li>';
-            exportShoppingListBtn.style.display = 'none';
             return;
         }
-
         let grandTotalCost = 0;
         for (const invId in totalIngredients) {
             const item = totalIngredients[invId];
@@ -1426,51 +1067,29 @@ document.addEventListener('DOMContentLoaded', () => {
             let totalCost = 0;
             let totalQtyInBaseUnit = 0;
             const priceUnit = baseItem.priceUnit ? baseItem.priceUnit.toLowerCase() : 'g';
-            
-            
-            // Consolidar y convertir unidades para mostrar
-            const consolidated = {};
+            const quantityStrings = [];
             for (const unit in units) {
                 const quantity = units[unit];
+                quantityStrings.push(`${quantity.toFixed(1)} ${unit}`);
                 const convertedQty = convertUnit(quantity, unit, priceUnit);
                 if (convertedQty !== null) {
                     totalQtyInBaseUnit += convertedQty;
                 }
-                // Para mostrar, consolidamos en unidades más grandes si la cantidad lo justifica
-                let displayUnit = unit;
-                let displayQty = quantity;
-                if ((unit === 'g' || unit === 'ml') && quantity >= 1000) {
-                     displayUnit = unit === 'g' ? 'kg' : 'l';
-                     displayQty = quantity / 1000;
-                }
-                if (!consolidated[displayUnit]) {
-                    consolidated[displayUnit] = 0;
-                }
-                consolidated[displayUnit] += displayQty;
             }
-
-            // Generar string de cantidades (ej: 1.50 kg + 50 g)
-            const quantityStrings = Object.keys(consolidated).map(unit => `${consolidated[unit].toFixed(2)} ${unit}`);
-            
-            // Calcular costo
             totalCost = totalQtyInBaseUnit * (baseItem.price || 0);
             grandTotalCost += totalCost;
-
-           
             const li = document.createElement('li');
             li.className = 'list-item';
             li.innerHTML = `
                 <img src="${escapeHTML(baseItem.image) || DEFAULT_PLACEHOLDER}" alt="" class="item-image">
                 <div class="item-details">
                     <span>${escapeHTML(baseItem.name)}</span>
-                    <span class="item-total-quantity">${quantityStrings.join(' + ')}</span>
+                    <span class="item-total-quantity">${quantityStrings.join(', ')}</span>
                 </div>
                 <span class="item-total-price">$${Math.round(totalCost)}</span>
             `;
             shoppingListResults.appendChild(li);
         }
-
-        // Total de Costo
         const totalLi = document.createElement('li');
         totalLi.className = 'list-item';
         totalLi.style.background = 'var(--color-border)';
@@ -1479,48 +1098,31 @@ document.addEventListener('DOMContentLoaded', () => {
             <strong class="item-total-price" style="font-size: 1.1rem;">$${Math.round(grandTotalCost)}</strong>
         `;
         shoppingListResults.appendChild(totalLi);
-        
-        // Mostrar botón de exportar
-        exportShoppingListBtn.style.display = 'inline-block';
     }
-
     function convertUnit(quantity, fromUnit, toUnit) {
         if (!quantity || !fromUnit || !toUnit) return null;
         const from = fromUnit.toLowerCase();
-               const to = toUnit.toLowerCase();
+        const to = toUnit.toLowerCase();
         if (from === to) return quantity;
         const conversions = {
             'g': { 'kg': q => q / 1000 },
             'kg': { 'g': q => q * 1000 },
             'ml': { 'l': q => q / 1000 },
-            'l': { 'ml': q => q * 1000 },
-            'unidad': {}, // Conversión de unidad a unidad no es posible sin factor
+            'l': { 'ml': q => q * 1000 }
         };
-        // Conversión entre masa/volumen a gramos/litros (asumiendo densidad 1 para volumen a masa)
-        if (from === 'ml' && to === 'g') return quantity;
-        if (from === 'l' && to === 'kg') return quantity;
-        
         if (conversions[from] && conversions[from][to]) {
             return conversions[from][to](quantity);
         }
-        
-        // Si no hay conversión directa, asumimos que son la misma base para el costo (g->kg, u->u, etc.)
-        if (to === 'g' && from === 'kg') return quantity * 1000;
-        if (to === 'kg' && from === 'g') return quantity / 1000;
-        if (to === 'l' && from === 'ml') return quantity / 1000;
-        if (to === 'ml' && from === 'l') return quantity * 1000;
-        if (to === 'unidad' && from === 'unidad') return quantity;
-        
         return null;
     }
 
-    // ... El resto de la app.js (Módulos 8 y 9) continúan sin cambios ...
     // =================================================================
-    // --- 8. IMPORTAR / EXPORTAR JSON --- (Sin cambios)
+    // --- 8. IMPORTAR / EXPORTAR JSON --- (MODIFICADO)
     // =================================================================
     function setupDataManagement() {
         exportBtn.addEventListener('click', () => {
             try {
+                // Exportar sin Base64 es mucho más seguro y liviano
                 const exportData = { ...appData };
                 delete exportData.lastModified; 
                 const dataStr = JSON.stringify(exportData, null, 2);
@@ -1546,6 +1148,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const importedData = JSON.parse(e.target.result);
                     if (confirm('¿Importar datos? Esto sobrescribirá todos los datos locales actuales.')) {
+                        // Limpiar imágenes Base64 de importaciones antiguas
+                        if (importedData.recipes && importedData.recipes.length > 0) {
+                            importedData.recipes.forEach(r => {
+                                if (r.image && r.image.startsWith('data:image/')) {
+                                    r.image = null; // Borrar Base64 antiguo
+                                }
+                            });
+                        }
+
                         appData = { ...defaultData, ...importedData };
                         saveData(); 
                         renderAll(); 
@@ -1571,94 +1182,78 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 9. Lógica de Autenticación y Sincronización (UI) ---
     // =================================================================
 
-    function setupAllEventListeners() {
-        setupModalControls();
-        setupFormHandlers();
-        setupEventListeners();
-        setupAuthButtons();
-        setupLoginButton();
-    }
-
     function setupAuthButtons() {
-        if (userAvatar) {
-            userAvatar.addEventListener('click', (e) => {
-                e.stopPropagation();
-                sessionMenu.classList.toggle('visible');
-            });
-        }
-
-        document.addEventListener('click', (e) => {
-            if (!sessionMenu.contains(e.target) && !userAvatar.contains(e.target)) {
-                sessionMenu.classList.remove('visible');
+        loginBtn.addEventListener('click', () => {
+            if (typeof signInWithGoogle === 'function') {
+                signInWithGoogle();
             }
         });
-
-        if (syncToggle) {
-            syncToggle.addEventListener('change', () => {
-                syncEnabled = syncToggle.checked;
-                console.log(`Sincronización ${syncEnabled ? 'activada' : 'desactivada'}`);
-                if (syncEnabled && currentUser) {
-                    syncNowBtn.click();
+        logoutBtn.addEventListener('click', () => {
+            if (typeof signOut === 'function') {
+                signOut();
+            }
+        });
+        syncNowBtn.addEventListener('click', async () => {
+            if (typeof pullFromCloud === 'function') {
+                updateSyncStatus('syncing');
+                const cloudData = await pullFromCloud();
+                if (cloudData) {
+                    handleCloudUpdate(cloudData);
+                } else {
+                    updateSyncStatus(true);
                 }
-            });
-        }
-
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                if (typeof signOut === 'function') {
-                    signOut();
-                }
-            });
-        }
-        if (syncNowBtn) {
-            syncNowBtn.addEventListener('click', async () => {
-                if (typeof pullFromCloud === 'function') {
-                    updateSyncStatus('syncing');
-                    const cloudData = await pullFromCloud();
-                    if (cloudData) {
-                        handleCloudUpdate(cloudData);
-                    } else {
-                        // Si no hay datos en la nube, intentar subir los locales si existen
-                        const localData = getLocalData();
-                        if (localData && localData.lastModified > 0) {
-                            await pushToCloud(localData);
-                        }
-                        updateSyncStatus(true);
-                    }
-                }
-            });
-        }
-    }
-
-    function setupLoginButton() {
-        if (loginBtn) {
-            loginBtn.addEventListener('click', () => {
-                if (typeof signInWithGoogle === 'function') {
-                    signInWithGoogle();
-                }
-            });
-        }
+            }
+        });
     }
 
     function handleUserLogin(user) {
-        // Esta función ahora es más simple. Solo actualiza la UI del usuario.
-        // La carga de datos se gestiona en firebase-sync.js
-        startApp();
-        if (userProfileDiv) userProfileDiv.style.display = 'block';
-        if (userAvatar) userAvatar.src = user.photoURL || DEFAULT_PLACEHOLDER;
-        if (userEmail) userEmail.textContent = user.email;
+        // Cargar datos locales ANTES de la sincronización
+        loadData();
+        // Renderizar la app con los datos locales
+        renderAll();
+        // Mostrar el perfil de usuario
+        userProfileDiv.style.display = 'flex';
+        userAvatar.src = user.photoURL || DEFAULT_PLACEHOLDER;
+        userEmail.textContent = user.email;
+        updateSyncStatus(null); // Limpiar estado
     }
 
     function handleUserLogout() {
-        if (userProfileDiv) userProfileDiv.style.display = 'none';
-        if (sessionMenu) sessionMenu.classList.remove('visible');
-        if (loginBtn) loginBtn.style.display = 'inline-flex';
-        if (userAvatar) userAvatar.src = '';
-        if (userEmail) userEmail.textContent = '';
-        if (typeof updateSyncStatus === 'function') updateSyncStatus(null);
+        // Ocultar perfil
+        userProfileDiv.style.display = 'none';
+        userAvatar.src = '';
+        userEmail.textContent = '';
+        // Limpiar datos locales
+        localStorage.removeItem(APP_STORAGE_KEY);
+        appData = { ...defaultData };
+        renderAll(); // Renderizará placeholders vacíos (porque la app está oculta)
     }
 
-    // Inicialización
-    setupAllEventListeners(); // <-- MOVIDO: Se configuran todos los listeners al inicio.
+    function updateSyncStatus(status) {
+        syncNowBtn.classList.remove('syncing', 'synced', 'error');
+        if (status === 'syncing') {
+            syncNowBtn.classList.add('syncing');
+        } else if (status === true) {
+            syncNowBtn.classList.add('synced');
+        } else if (status === false) {
+            syncNowBtn.classList.add('error');
+        }
+    }
+
+    // --- Ejecutar Inicialización ---
     init();
-});
+
+    // --- Exponer funciones globales para que firebase-sync.js las vea ---
+    window.getLocalData = getLocalData;
+    window.handleCloudUpdate = handleCloudUpdate;
+    window.updateSyncStatus = updateSyncStatus;
+    window.loadData = loadData;
+    window.renderAll = renderAll;
+    window.appData = appData; // Exponer appData globalmente para debugging
+    
+    // Exponer la función de subida de archivos
+    if (typeof uploadFileToStorage === 'function') {
+        window.uploadFileToStorage = uploadFileToStorage;
+    }
+
+}); // <- Cierre del DOMContentLoaded

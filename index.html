@@ -17,8 +17,8 @@
     <div id="login-wall">
         <div class="login-box">
             <h1>Gestor de Pizzas</h1>
-            <p id="login-message">Verificando sesión...</p>
-            <button id="login-btn" class="btn btn-primary" style="display: none;">Iniciar Sesión con Google</button>
+            <p id="login-message">Por favor, inicia sesión para acceder a tus recetas.</p>
+            <button id="login-btn" class="btn btn-primary">Iniciar Sesión con Google</button>
             <p id="login-error-message" class="status-message" style="display: none;"></p>
         </div>
     </div>
@@ -46,190 +46,46 @@
                 <img src="assets/icons/diary.svg" alt="Diario" class="nav-icon">
                 <span>Diario</span>
             </button>
-            <button class="nav-tab" data-tab="eventos">
-                <img src="assets/icons/event.svg" alt="Eventos" class="nav-icon">
-                <span>Eventos</span>
-            </button>
-            <button class="nav-tab" data-tab="equipo">
-                <img src="assets/icons/tools.svg" alt="Equipo" class="nav-icon">
-                <span>Equipo</span>
-            </button>
             <button class="nav-tab" data-tab="ajustes">
                 <img src="assets/icons/settings.svg" alt="Ajustes" class="nav-icon">
                 <span>Ajustes</span>
             </button>
         </nav>
-
         <button id="theme-toggle" class="theme-toggle">
             <img src="assets/icons/sun.svg" alt="Modo Claro" class="icon-sun">
             <img src="assets/icons/moon.svg" alt="Modo Oscuro" class="icon-moon">
         </button>
-        
         <div class="firebase-auth-container">
             <div id="user-profile" style="display: none;">
-                <img id="user-avatar" src="" alt="Avatar" tabindex="0">
-                <div id="session-menu" class="session-menu">
-                    <div class="session-menu-header">
-                        <span id="user-email-menu"></span>
-                    </div>
-                    <div class="session-menu-item">
-                        <label for="sync-toggle">Sincronización en la nube</label>
-                        <label class="switch">
-                            <input type="checkbox" id="sync-toggle" checked>
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="session-menu-item">
-                        <button id="sync-now-btn" class="btn btn-secondary btn-small">Sincronizar ahora</button>
-                    </div>
-                    <div class="session-menu-footer">
-                        <button id="logout-btn" class="btn btn-danger btn-small">Cerrar Sesión</button>
-                    </div>
-                </div>
+                <img id="user-avatar" src="" alt="Avatar">
+                <span id="user-email"></span>
+                <button id="sync-now-btn" class="btn btn-secondary btn-small">Sincronizar</button>
+                <button id="logout-btn" class="btn btn-danger btn-small">Salir</button>
             </div>
         </div>
-
-
         <main class="content">
             <section id="recetas" class="tab-content active"><header class="content-header"><h2>Mis Recetas de Pizza</h2><button id="add-recipe-btn" class="btn btn-primary"><span class="btn-icon">+</span> Añadir Receta</button></header><div id="recipe-list" class="grid-list"></div></section>
             <section id="inventario" class="tab-content"><header class="content-header"><h2>Inventario de Ingredientes</h2><button id="add-ingredient-btn" class="btn btn-primary"><span class="btn-icon">+</span> Añadir Ingrediente</button></header><p class="subtitle">Aquí defines los ingredientes base (nombre, imagen y precio) que usarás en tus recetas.</p><div id="inventory-list" class="grid-list ingredients-grid"></div></section>
             <section id="calculadora" class="tab-content"><header class="content-header"><h2>Gestor de Masas</h2></header><div class="form-container" style="margin-bottom: 1.5rem;"><div class="form-group"><label for="dough-recipe-select">Mis Recetas de Masa Guardadas:</label><select id="dough-recipe-select"><option value="">-- Seleccionar Receta --</option></select><div class="controls" style="margin-top: 1rem;"><button id="load-dough-recipe-btn" class="btn btn-secondary">Cargar en Calculadora</button><button id="view-dough-recipe-btn" class="btn btn-light">Ver Detalles</button><button id="delete-dough-recipe-btn" class="btn btn-danger btn-small">Borrar</button></div></div></div><div class="form-container"><h3>Calculadora</h3><div class="form-group"><label for="calc-pizzas">Número de Pizzas:</label><input type="number" id="calc-pizzas" value="4"></div><div class="form-group"><label for="calc-peso">Peso por Masa (g):</label><input type="number" id="calc-peso" value="250"></div><div class="form-group"><label for="calc-hidratacion">Hidratación (%):</label><input type="number" id="calc-hidratacion" value="65" step="0.1"></div><div class="form-group"><label for="calc-sal">Sal (%):</label><input type="number" id="calc-sal" value="2.5" step="0.1"></div><div class="form-group"><label for="calc-levadura">Levadura Fresca (%):</label><input type="number" id="calc-levadura" value="0.3" step="0.1"></div><div class="controls"><button id="calculate-btn" class="btn btn-primary">Calcular Ingredientes</button><button id="save-dough-recipe-btn" class="btn btn-secondary">Guardar como Receta de Masa</button></div></div><div id="calc-results" class="results-box"></div></section>
-            
-            <section id="compras" class="tab-content">
-                <div class="form-container">
-                    <h2>Generador de Lista de Compras</h2>
-                    
-                    <h3 id="shopping-pizza-total" style="margin-top: 1rem; color: var(--color-primary); font-size: 1.2rem;">Total de Pizzas: 0</h3>
-                    
-                    <p class="placeholder-text-small">Selecciona cuántas pizzas de cada receta quieres preparar:</p>
-                    <div id="shopping-list-builder" class="shopping-list-builder">
-                        </div>
-                    
-                    <div class="input-group" style="margin-top: 2rem;">
-                        <label for="shopping-dough-select">Elegir Receta de Masa:</label>
-                        <select id="shopping-dough-select">
-                            <option value="">-- No Incluir Masa --</option>
-                        </select>
-                        <div class="details-grid" id="shopping-dough-details" style="margin-top: 0.5rem; display: none;">
-                            </div>
-                    </div>
-                    
-                    <button id="generate-shopping-list-btn" class="btn btn-primary" style="margin-top: 1.5rem;">Generar Lista</button>
-                </div>
-                
-                <div class="form-container">
-                    <h3>Lista de Compras Necesaria</h3>
-                    
-                    <button id="export-shopping-list-btn" class="btn btn-secondary btn-small" style="margin-bottom: 1rem; display: none;">Descargar Lista (.txt)</button>
-
-                    <ul id="shopping-list-results" class="item-list">
-                        <li class="placeholder-text-small" style="list-style-type: none;">Presiona "Generar Lista" después de seleccionar las cantidades.</li>
-                    </ul>
-                </div>
-            </section>
-
-            <section id="diario" class="tab-content"><header class="content-header"><h2>Diario de Horneado</h2><button id="add-diary-entry-btn" class="btn btn-primary"><span class="btn-icon">+</span> Nueva Entrada</button></header><div id="diary-list" class="timeline-container"></div></section>
-            
-            <section id="eventos" class="tab-content">
-                <header class="content-header">
-                    <h2>Planificador de Eventos</h2>
-                    <button id="add-event-btn" class="btn btn-primary"><span class="btn-icon">+</span> Crear Evento</button>
-                </header>
-                <div id="event-list" class="card-grid">
-                    </div>
-            </section>
-            
-            <section id="equipo" class="tab-content">
-                <header class="content-header">
-                    <h2>Gestor de Equipo Predefinido</h2>
-                    <button id="add-equipment-btn" class="btn btn-primary"><span class="btn-icon">+</span> Añadir Item</button>
-                </header>
-                <p class="subtitle">Crea y gestiona una base de datos de equipo y utensilios para usarlos en tus Checklists de Eventos.</p>
-                <button id="load-equipment-presets-btn" class="btn btn-light btn-small" style="margin-bottom: 1rem;">Importar lista sugerida</button>
-                <div id="equipment-list" class="card-grid equipment-grid">
-                    </div>
-            </section>
-            <section id="ajustes" class="tab-content"><header class="content-header"><h2>Ajustes y Datos</h2></header><div class="form-container"><h3>Exportar / Backup</h3><button id="export-json-btn" class="btn btn-secondary">Descargar Backup (JSON)</button><h3>Importar / Restaurar</h3><label for="import-json-input" class="btn btn-secondary">Seleccionar Archivo JSON</label><input type="file" id="import-json-input" accept=".json" style="display: none;"><p id="import-status" style="margin-top: 10px;"></p></div></section>
+            <section id="compras" class="tab-content"><header class="content-header"><h2>Lista de Compras</h2></header><p class="subtitle">Selecciona cuántas pizzas de cada tipo quieres hacer para generar una lista de compras total.</p><div class="form-container" style="margin-bottom: 1.5rem;"><h3>Pizzas a Preparar</h3><div id="shopping-list-builder"></div><button id="generate-shopping-list-btn" class="btn btn-primary" style="margin-top: 1rem;">Generar Lista de Compras</button></div><div class="results-box"><h4>Total de Ingredientes</h4><ul id="shopping-list-results" class="item-list"></ul></div></section>
+            <section id="diario" class="tab-content"><header class="content-header"><h2>Diario de Horneado</h2><button id="add-diary-entry-btn" class="btn btn-primary"><span class="btn-icon">+</span> Nueva Entrada</button></header><div id="diary-list" class="timeline"></div></section>
+            <section id="ajustes" class="tab-content"><header class="content-header"><h2>Ajustes y Datos</h2></header><div class="settings-group"><h3>Gestión de Datos</h3><p>Guarda o carga todos tus datos (recetas, inventario, diario) en un archivo JSON.</p><div class="controls"><button id="export-json-btn" class="btn btn-secondary">Exportar Datos (JSON)</button><label for="import-json-input" class="btn btn-warning">Importar Datos (JSON)</label><input type="file" id="import-json-input" accept=".json" style="display: none;"></div><p id="import-status" class="status-message"></p></div></section>
         </main>
     </div>
 
     <div id="modal-container" class="modal-container">
-        <div id="recipe-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h2 id="recipe-modal-title">Nueva Receta de Pizza</h2><form id="recipe-form"><input type="hidden" id="recipe-id"><div class="input-group"><label for="recipe-title">Título de la Receta:</label><input type="text" id="recipe-title" required></div><div class="image-upload-area"><img id="recipe-image-preview" src="assets/img/placeholder.svg" alt="Previsualización de Imagen" data-current-url=""><label for="recipe-image-input" class="btn btn-light btn-small">Cambiar Imagen</label><input type="file" id="recipe-image-input" accept="image/*" style="display: none;"><button type="button" id="recipe-remove-image-btn" class="btn btn-danger btn-small" style="display: none;">Quitar Imagen</button><p class="placeholder-text-small" style="margin-top: 5px;">Máx 10MB. Se comprime al guardar.</p></div><div class="input-group"><label for="ingredient-search">Buscar y Añadir Ingredientes:</label><input type="text" id="ingredient-search" placeholder="Escribe el nombre de un ingrediente..."><div id="ingredient-search-results" class="search-results"></div></div><label>Ingredientes de la Receta:</label><ul id="current-recipe-ingredients" class="item-list"><li class="placeholder-text-small" style="list-style-type: none;">Añade ingredientes usando el buscador de arriba.</li></ul><div class="input-group"><label for="recipe-steps">Pasos / Instrucciones:</label><textarea id="recipe-steps" rows="6" required></textarea></div><button type="submit" class="btn btn-primary">Guardar Receta</button></form></div>
-
-        <div id="inventory-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h2 id="inventory-modal-title">Nuevo Ingrediente</h2><form id="inventory-form"><input type="hidden" id="inv-id"><div class="input-group"><label for="inv-name">Nombre del Ingrediente:</label><input type="text" id="inv-name" required></div><div class="input-group"><label for="inv-image">URL de Imagen:</label><input type="text" id="inv-image" placeholder="Opcional. URL de una imagen."></div><h3>Costo de Referencia (Opcional)</h3><div class="input-group price-input-group"><label for="inv-price">Costo por unidad:</label><input type="number" id="inv-price" min="0" step="0.01" value="0"><select id="inv-unit"><option value="g">gramo (g)</option><option value="kg">kilogramo (kg)</option><option value="ml">mililitro (ml)</option><option value="l">litro (l)</option><option value="unidad">unidad</option></select></div><p class="placeholder-text-small">Ej: Si la harina cuesta $1.000 el Kg, pon 1.000 en costo y "kg" en unidad.</p><button type="submit" class="btn btn-primary">Guardar Ingrediente</button></form></div>
-
-        <div id="dough-recipe-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h2 id="dough-recipe-modal-title">Guardar Receta de Masa</h2><form id="dough-recipe-form"><input type="hidden" id="dough-id"><div class="input-group"><label for="dough-title">Nombre de la Receta:</label><input type="text" id="dough-title" required></div><div class="input-group"><label for="dough-date">Fecha de Creación:</label><input type="date" id="dough-date" required></div><div class="details-grid"><div class="details-grid-item"><strong id="dough-modal-hidratacion"></strong></div><div class="details-grid-item"><strong id="dough-modal-sal"></strong></div><div class="details-grid-item"><strong id="dough-modal-levadura"></strong></div></div><h3>Tiempos de Fermentación (Opcional)</h3><div class="input-group"><label for="dough-block-ferment">Bloque (Apresto):</label><input type="text" id="dough-block-ferment" placeholder="Ej: 2h a 20°C"></div><div class="input-group"><label for="dough-cold-ferment">Frío (Nevera):</label><input type="text" id="dough-cold-ferment" placeholder="Ej: 48h a 4°C"></div><div class="input-group"><label for="dough-ambient-ferment">Ambiente (Appretto):</label><input type="text" id="dough-ambient-ferment" placeholder="Ej: 3h a 25°C"></div><div class="input-group"><label for="dough-comments">Comentarios/Notas:</label><textarea id="dough-comments" rows="3"></textarea></div><button type="submit" class="btn btn-primary">Guardar Receta de Masa</button></form></div>
-
-        <div id="dough-details-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h2 id="dough-details-title">Detalle de Receta de Masa</h2><div id="dough-details-content"></div></div>
-
-        <div id="diary-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h2 id="diary-modal-title">Nueva Entrada</h2><form id="diary-form"><input type="hidden" id="diary-id"><div class="input-group"><label for="diary-title">Título:</label><input type="text" id="diary-title" required></div><div class="input-group"><label for="diary-date">Fecha:</label><input type="date" id="diary-date" required></div><div class="input-group"><label for="diary-notes">Notas / Observaciones:</label><textarea id="diary-notes" rows="8" required></textarea></div><button type="submit" class="btn btn-primary">Guardar Entrada</button></form></div>
-        
-        <div id="event-modal" class="modal-content">
-            <button class="modal-close-btn">&times;</button>
-            <h2 id="event-modal-title">Nuevo Evento de Pizza</h2>
-            <form id="event-form">
-                <input type="hidden" id="event-id">
-                <div class="input-group">
-                    <label for="event-title">Nombre del Evento:</label>
-                    <input type="text" id="event-title" required>
-                </div>
-                <div class="input-group">
-                    <label for="event-date">Fecha y Hora:</label>
-                    <input type="datetime-local" id="event-date" required>
-                </div>
-                <div class="input-group">
-                    <label for="event-location">Lugar (Ubicación):</label>
-                    <input type="text" id="event-location">
-                </div>
-                <div class="input-group">
-                    <label for="event-notes">Notas del Evento:</label>
-                    <textarea id="event-notes" rows="4"></textarea>
-                </div>
-                
-                <h3 style="margin-top: 1.5rem;">Checklist / Cosas por hacer</h3>
-                <div class="input-group">
-                    <label for="equipment-search">Añadir Equipo:</label>
-                    <input type="text" id="equipment-search" placeholder="Busca un item de tu lista de equipo...">
-                    <div id="equipment-search-results" class="search-results"></div>
-                </div>
-                <div class="input-group add-checklist-item">
-                    <input type="text" id="new-checklist-item" placeholder="O añade un item personalizado...">
-                    <button type="button" id="add-checklist-item-btn" class="btn btn-secondary">Añadir</button>
-                </div>
-                <ul id="event-checklist" class="item-list checklist-list">
-                    </ul>
-
-                <button type="submit" class="btn btn-primary">Guardar Evento</button>
-            </form>
-        </div>
-        
-        <div id="equipment-modal" class="modal-content">
-            <button class="modal-close-btn">&times;</button>
-            <h2 id="equipment-modal-title">Nuevo Item de Equipo</h2>
-            <form id="equipment-form">
-                <input type="hidden" id="equip-id">
-                <div class="input-group">
-                    <label for="equip-name">Nombre del Equipo:</label>
-                    <input type="text" id="equip-name" required>
-                </div>
-                <div class="input-group">
-                    <label for="equip-image">URL de Imagen (Opcional):</label>
-                    <input type="text" id="equip-image" placeholder="URL de una imagen del equipo.">
-                </div>
-                <button type="submit" class="btn btn-primary">Guardar Item</button>
-            </form>
-        </div>
+        <div id="recipe-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h3 id="recipe-modal-title">Nueva Receta de Pizza</h3><form id="recipe-form" class="modal-form"><input type="hidden" id="recipe-id"><div class="form-group"><label for="recipe-title">Título de la Pizza:</label><input type="text" id="recipe-title" required></div><div class="form-group"><label>Imagen de la Receta:</label><img id="recipe-image-preview" src="assets/img/placeholder.svg" alt="Vista previa" class="form-image-preview"><div class="form-group-file"><label for="recipe-image-input" class="btn btn-light">Seleccionar Imagen</label><input type="file" id="recipe-image-input" accept="image/*" style="display: none;"><button type="button" id="recipe-remove-image-btn" class="btn btn-danger btn-small" style="display: none;">Quitar Imagen</button></div></div><div class="form-group"><label for="ingredient-search">Añadir Ingredientes (del Inventario):</label><input type="text" id="ingredient-search" placeholder="Buscar Harina, Tomate, Mozzarella..."><div id="ingredient-search-results"></div></div><label>Ingredientes de la Receta:</label><ul id="current-recipe-ingredients" class="item-list"></ul><div class="form-group"><label for="recipe-steps">Pasos de preparación:</label><textarea id="recipe-steps" rows="7"></textarea></div><button type="submit" class="btn btn-primary">Guardar Receta</button></form></div>
+        <div id="inventory-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h3 id="inventory-modal-title">Nuevo Ingrediente</h3><form id="inventory-form" class="modal-form"><input type="hidden" id="inv-id"><div class="form-group"><label for="inv-name">Nombre del Ingrediente:</label><input type="text" id="inv-name" required placeholder="Ej: Harina Caputo Pizzeria"></div><div class="form-group"><label for="inv-image">URL de la Imagen (opcional):</label><input type="text" id="inv-image" placeholder="https://ejemplo.com/imagen.png"></div><div class="form-group"><label for="inv-price">Precio:</label><input type="number" id="inv-price" required placeholder="Ej: 10000" min="0" step="1"></div><div class="form-group"><label for="inv-unit">Unidad de Precio (ej: kg, g, l, u):</label><input type="text" id="inv-unit" required placeholder="Ej: kg"></div><button type="submit" class="btn btn-primary">Guardar Ingrediente</button></form></div>
+        <div id="dough-recipe-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h3 id="dough-recipe-modal-title">Guardar Receta de Masa</h3><form id="dough-recipe-form" class="modal-form"><input type="hidden" id="dough-id"><div class="form-group"><label for="dough-title">Nombre de la Receta:</label><input type="text" id="dough-title" required placeholder="Ej: Biga 80%"></div><div class="form-group"><label for="dough-date">Fecha:</label><input type="date" id="dough-date"></div><p>Los siguientes valores se (sobre)escribirán desde la calculadora:</p><ul class="simple-list"><li id="dough-modal-hidratacion"></li><li id="dough-modal-sal"></li><li id="dough-modal-levadura"></li></ul><hr><h4>Tiempos de Fermentación (Registro)</h4><div class="form-group"><label for="dough-block-ferment">Fermentación en Bloque (Apresto):</label><input type="text" id="dough-block-ferment" placeholder="Ej: 2h TA (20°C)"></div><div class="form-group"><label for="dough-cold-ferment">Fermentación en Frío (Frigo):</label><input type="text" id="dough-cold-ferment" placeholder="Ej: 48h (4°C)"></div><div class="form-group"><label for="dough-ambient-ferment">Fermentación Ambiente (Appretto):</label><input type="text" id="dough-ambient-ferment" placeholder="Ej: 4h TA (22°C)"></div><div class="form-group"><label for="dough-comments">Comentarios:</label><textarea id="dough-comments" rows="3"></textarea></div><button type="submit" class="btn btn-primary">Guardar Receta de Masa</button></form></div>
+        <div id="dough-details-modal" class="modal-content wide"><button class="modal-close-btn">&times;</button><h3 id="dough-details-title">Detalles de la Receta de Masa</h3><div id="dough-details-content"></div></div>
+        <div id="diary-modal" class="modal-content"><button class="modal-close-btn">&times;</button><h3 id="diary-modal-title">Nueva Entrada al Diario</h3><form id="diary-form" class="modal-form"><input type="hidden" id="diary-id"><div class="form-group"><label for="diary-title">Título:</label><input type="text" id="diary-title" required></div><div class="form-group"><label for="diary-date">Fecha:</label><input type="date" id="diary-date" required></div><div class="form-group"><label for="diary-notes">Notas:</label><textarea id="diary-notes" rows="7" required></textarea></div><button type="submit" class="btn btn-primary">Guardar Entrada</button></form></div>
     </div>
-    
-    <div id="ingredient-tooltip" class="tooltip"></div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
+    <div id="ingredient-tooltip"></div>
 
     <script src="firebase-config.js"></script>
-    <script src="firebase-sync.js"></script>
+    <script src="firebase-sync.js"></script> 
+
     <script src="assets/app.js"></script>
 </body>
 </html>
