@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función auxiliar: verifica si es admin por UID
+    function isAdminByUID() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Email del administrador principal (fallback)
+    function isAdminByEmail() {
+      return request.auth != null && request.auth.token.email == 'isilber31@gmail.com';
+    }
+    
+    // Verifica si es admin (por UID o email)
+    function isAdmin() {
+      return isAdminByUID() || isAdminByEmail();
+    }
+    
+    // Verifica si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verifica si el usuario está en la lista de autorizados
+    function isAuthorized() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/authorized_users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/authorized_users/$(request.auth.uid)).data.status == 'approved';
+    }
+    
+    // === COLECCIÓN DE ADMINISTRADORES ===
+    match /admins/{adminId} {
+      // Solo admins pueden escribir
+      allow write: if isAdmin();
+      
+      // Usuarios autenticados pueden leer para verificar si son admin
+      allow read: if isAuthenticated();
+    }
+    
+    // === COLECCIÓN DE USUARIOS (DATOS DE LA APP) ===
+    // Cada usuario solo puede leer/escribir sus propios datos
+    match /users/{userId}/datasets/{datasetId} {
+      allow read, write: if isAuthenticated() && 
+                            (request.auth.uid == userId) && 
+                            (isAdmin() || isAuthorized());
+    }
+    
+    // === COLECCIÓN DE SOLICITUDES DE ACCESO ===
+    match /access_requests/{requestId} {
+      // Cualquier usuario autenticado puede crear su propia solicitud
+      allow create: if isAuthenticated() && request.auth.uid == requestId;
+      
+      // Solo puede leer su propia solicitud
+      allow read: if isAuthenticated() && request.auth.uid == requestId;
+      
+      // Solo el admin puede leer todas las solicitudes y eliminarlas
+      allow read, delete: if isAdmin();
+    }
+    
+    // === COLECCIÓN DE USUARIOS AUTORIZADOS ===
+    match /authorized_users/{userId} {
+      // Solo el admin puede crear, leer, actualizar y eliminar usuarios autorizados
+      allow read, write: if isAdmin();
+      
+      // Los usuarios autorizados pueden leer su propia entrada
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}

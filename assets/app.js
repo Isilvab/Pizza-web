@@ -117,12 +117,18 @@ document.addEventListener('DOMContentLoaded', () => {
             setupToolsListeners(); // <--- NUEVO
             setupVideosListeners(); // <--- NUEVO
             setupAuthButtons();
+            setupColorCustomization(); // <--- NUEVO
             
             if (typeof initFirebaseSync === 'function') {
                 initFirebaseSync(handleUserLogin, handleUserLogout);
             } else {
                 console.error("Error: firebase-sync.js no se cargó correctamente.");
                 showLoginScreen("Error crítico de la aplicación. Contacte al administrador.");
+            }
+            
+            // NUEVO: Inicializar mejoras de UI
+            if (typeof initEnhancedUI === 'function') {
+                initEnhancedUI();
             }
         } catch (error) {
             console.error("Error fatal durante la inicialización:", error);
@@ -1874,6 +1880,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 profileDropdown.classList.remove('active');
             }
         });
+        
+        // Botón de cerrar sesión en ajustes
+        const logoutSettingsBtn = document.getElementById('logout-settings-btn');
+        if (logoutSettingsBtn) {
+            logoutSettingsBtn.addEventListener('click', () => {
+                if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
+                    if (typeof signOut === 'function') {
+                        signOut();
+                    }
+                }
+            });
+        }
+        
         syncNowBtn.addEventListener('click', async () => {
             if (typeof pullFromCloud === 'function') {
                 updateSyncStatus('syncing');
@@ -1887,7 +1906,241 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function handleUserLogin(user) {
+    // =================================================================
+    // --- PANEL DE ADMINISTRACIÓN ---
+    // =================================================================
+    function setupAdminPanel() {
+        loadAccessRequests();
+        loadAuthorizedUsers();
+    }
+    
+    async function loadAccessRequests() {
+        const requestsList = document.getElementById('access-requests-list');
+        if (!requestsList) return;
+        
+        requestsList.innerHTML = '<p style="padding: 1rem;">Cargando solicitudes...</p>';
+        
+        try {
+            // Verificar que Firebase esté disponible
+            if (typeof firebase === 'undefined' || typeof firebase.firestore !== 'function') {
+                throw new Error('Firebase no está disponible');
+            }
+            
+            const db = firebase.firestore();
+            
+            const snapshot = await db.collection('access_requests')
+                .where('status', '==', 'pending')
+                .get();
+            
+            if (snapshot.empty) {
+                requestsList.innerHTML = '<p class="placeholder-text-small">No hay solicitudes de acceso pendientes en este momento.</p>';
+                return;
+            }
+            
+            requestsList.innerHTML = '';
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.marginBottom = '1rem';
+                
+                // Crear elementos del DOM de forma segura
+                const containerDiv = document.createElement('div');
+                containerDiv.style.cssText = 'display: flex; align-items: center; gap: 1rem;';
+                
+                const img = document.createElement('img');
+                img.src = data.photoURL || DEFAULT_PLACEHOLDER;
+                img.alt = 'Avatar';
+                img.style.cssText = 'width: 50px; height: 50px; border-radius: 50%; object-fit: cover;';
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.style.flex = '1';
+                infoDiv.innerHTML = `
+                    <strong>${escapeHTML(data.displayName)}</strong>
+                    <div style="color: var(--color-text-alt); font-size: 0.9rem;">${escapeHTML(data.email)}</div>
+                    <div style="color: var(--color-text-alt); font-size: 0.85rem;">Solicitado: ${data.requestedAt ? new Date(data.requestedAt.toDate()).toLocaleDateString() : 'Fecha desconocida'}</div>
+                `;
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.cssText = 'display: flex; gap: 0.5rem;';
+                
+                const approveBtn = document.createElement('button');
+                approveBtn.className = 'btn btn-primary btn-small';
+                approveBtn.textContent = 'Aprobar';
+                approveBtn.onclick = () => approveUser(doc.id, data.email);
+                
+                const rejectBtn = document.createElement('button');
+                rejectBtn.className = 'btn btn-danger btn-small';
+                rejectBtn.textContent = 'Rechazar';
+                rejectBtn.onclick = () => rejectUser(doc.id);
+                
+                actionsDiv.appendChild(approveBtn);
+                actionsDiv.appendChild(rejectBtn);
+                
+                containerDiv.appendChild(img);
+                containerDiv.appendChild(infoDiv);
+                containerDiv.appendChild(actionsDiv);
+                
+                card.appendChild(containerDiv);
+                requestsList.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Error cargando solicitudes:', error);
+            console.error('Código de error:', error.code);
+            console.error('Mensaje:', error.message);
+            
+            let errorMsg = 'Error al cargar solicitudes.';
+            if (error.code === 'permission-denied') {
+                errorMsg = 'Error de permisos: Las reglas de Firestore no permiten leer access_requests. Verifica las reglas en Firebase Console.';
+            } else if (error.message) {
+                errorMsg = `Error: ${error.message}`;
+            }
+            
+            requestsList.innerHTML = `<p style="color: red; padding: 1rem;">${errorMsg}</p>`;
+        }
+    }
+    
+    async function loadAuthorizedUsers() {
+        const usersList = document.getElementById('authorized-users-list');
+        if (!usersList) return;
+        
+        usersList.innerHTML = '<p style="padding: 1rem;">Cargando usuarios...</p>';
+        
+        try {
+            // Verificar que Firebase esté disponible
+            if (typeof firebase === 'undefined' || typeof firebase.firestore !== 'function') {
+                throw new Error('Firebase no está disponible');
+            }
+            
+            const db = firebase.firestore();
+            
+            const snapshot = await db.collection('authorized_users')
+                .where('status', '==', 'approved')
+                .get();
+            
+            if (snapshot.empty) {
+                usersList.innerHTML = '<p class="placeholder-text-small">Aún no hay usuarios autorizados. Cuando apruebes solicitudes, aparecerán aquí.</p>';
+                return;
+            }
+            
+            usersList.innerHTML = '';
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.marginBottom = '1rem';
+                
+                // Crear elementos del DOM de forma segura
+                const containerDiv = document.createElement('div');
+                containerDiv.style.cssText = 'display: flex; align-items: center; gap: 1rem;';
+                
+                const img = document.createElement('img');
+                img.src = data.photoURL || DEFAULT_PLACEHOLDER;
+                img.alt = 'Avatar';
+                img.style.cssText = 'width: 40px; height: 40px; border-radius: 50%; object-fit: cover;';
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.style.flex = '1';
+                infoDiv.innerHTML = `
+                    <strong>${escapeHTML(data.displayName)}</strong>
+                    <div style="color: var(--color-text-alt); font-size: 0.9rem;">${escapeHTML(data.email)}</div>
+                    <div style="color: var(--color-text-alt); font-size: 0.85rem;">Aprobado: ${data.approvedAt ? new Date(data.approvedAt.toDate()).toLocaleDateString() : 'Fecha desconocida'}</div>
+                `;
+                
+                const revokeBtn = document.createElement('button');
+                revokeBtn.className = 'btn btn-danger btn-small';
+                revokeBtn.textContent = 'Revocar';
+                revokeBtn.onclick = () => revokeAccess(doc.id, data.email);
+                
+                containerDiv.appendChild(img);
+                containerDiv.appendChild(infoDiv);
+                containerDiv.appendChild(revokeBtn);
+                
+                card.appendChild(containerDiv);
+                usersList.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Error cargando usuarios autorizados:', error);
+            console.error('Código de error:', error.code);
+            console.error('Mensaje:', error.message);
+            
+            let errorMsg = 'Error al cargar usuarios.';
+            if (error.code === 'permission-denied') {
+                errorMsg = 'Error de permisos: Las reglas de Firestore no permiten leer authorized_users. Verifica las reglas en Firebase Console.';
+            } else if (error.message) {
+                errorMsg = `Error: ${error.message}`;
+            }
+            
+            usersList.innerHTML = `<p style="color: red; padding: 1rem;">${errorMsg}</p>`;
+        }
+    }
+    
+    async function approveUser(uid, email) {
+        if (!confirm(`¿Aprobar acceso para ${email}?`)) return;
+        
+        try {
+            const db = window.firestore || firebase.firestore();
+            const requestDoc = await db.collection('access_requests').doc(uid).get();
+            const requestData = requestDoc.data();
+            
+            // Crear usuario autorizado
+            await db.collection('authorized_users').doc(uid).set({
+                email: requestData.email,
+                displayName: requestData.displayName,
+                photoURL: requestData.photoURL,
+                status: 'approved',
+                approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // Eliminar solicitud
+            await db.collection('access_requests').doc(uid).delete();
+            
+            alert(`Acceso aprobado para ${email}`);
+            loadAccessRequests();
+            loadAuthorizedUsers();
+        } catch (error) {
+            console.error('Error aprobando usuario:', error);
+            alert('Error al aprobar usuario: ' + error.message);
+        }
+    }
+    
+    async function rejectUser(uid) {
+        if (!confirm('¿Rechazar esta solicitud?')) return;
+        
+        try {
+            const db = window.firestore || firebase.firestore();
+            await db.collection('access_requests').doc(uid).delete();
+            alert('Solicitud rechazada');
+            loadAccessRequests();
+        } catch (error) {
+            console.error('Error rechazando solicitud:', error);
+            alert('Error al rechazar solicitud: ' + error.message);
+        }
+    }
+    
+    async function revokeAccess(uid, email) {
+        if (!confirm(`¿Revocar acceso para ${email}? El usuario ya no podrá acceder a la aplicación.`)) return;
+        
+        try {
+            const db = window.firestore || firebase.firestore();
+            await db.collection('authorized_users').doc(uid).delete();
+            alert(`Acceso revocado para ${email}`);
+            loadAuthorizedUsers();
+        } catch (error) {
+            console.error('Error revocando acceso:', error);
+            alert('Error al revocar acceso: ' + error.message);
+        }
+    }
+
+    // Exponer funciones globalmente para los botones inline
+    window.approveUser = approveUser;
+    window.rejectUser = rejectUser;
+    window.revokeAccess = revokeAccess;
+
+    // =================================================================
+    // --- AUTENTICACIÓN ---
+    // =================================================================
+    async function handleUserLogin(user) {
         // Cargar datos locales ANTES de la sincronización
         loadData();
         // Renderizar la app con los datos locales
@@ -1898,6 +2151,55 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('user-avatar-large').src = user.photoURL || DEFAULT_PLACEHOLDER;
         userEmail.textContent = user.email;
         updateSyncStatus(null); // Limpiar estado
+        
+        // Mostrar panel de admin si es el administrador
+        const isAdmin = await checkIfAdminInApp(user);
+        
+        console.log("=== VERIFICACIÓN DE PANEL ADMIN (app.js) ===");
+        console.log("UID:", user.uid);
+        console.log("Email:", user.email);
+        console.log("¿Es admin?:", isAdmin);
+        
+        if (isAdmin) {
+            const adminPanel = document.getElementById('admin-panel');
+            console.log("Panel de admin encontrado:", !!adminPanel);
+            if (adminPanel) {
+                adminPanel.style.display = 'block';
+                setupAdminPanel();
+                console.log("✅ Panel de administración activado");
+            }
+        } else {
+            console.log("❌ Usuario NO es administrador - panel oculto");
+        }
+    }
+    
+    /**
+     * Verifica si el usuario actual es admin (copia de la función en firebase-sync.js)
+     */
+    async function checkIfAdminInApp(user) {
+        if (!user || !user.uid) return false;
+        
+        try {
+            const db = firebase.firestore();
+            const adminDoc = await db.collection('admins').doc(user.uid).get();
+            if (adminDoc.exists && adminDoc.data().isAdmin === true) {
+                return true;
+            }
+            
+            // Fallback por email
+            const ADMIN_EMAIL = "isilber31@gmail.com";
+            const userEmail = (user.email || '').toLowerCase().trim();
+            const adminEmail = ADMIN_EMAIL.toLowerCase().trim();
+            return userEmail === adminEmail;
+            
+        } catch (error) {
+            console.error("Error verificando admin en app.js:", error);
+            // Fallback en caso de error
+            const ADMIN_EMAIL = "isilber31@gmail.com";
+            const userEmail = (user.email || '').toLowerCase().trim();
+            const adminEmail = ADMIN_EMAIL.toLowerCase().trim();
+            return userEmail === adminEmail;
+        }
     }
 
     function handleUserLogout() {
@@ -1920,6 +2222,161 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (status === false) {
             syncNowBtn.classList.add('error');
         }
+    }
+
+    // =================================================================
+    // --- PERSONALIZACIÓN DE COLORES ---
+    // =================================================================
+    
+    const colorPresets = {
+        default: { primary: '#e63946', secondary: '#f1faee', accent: '#457b9d' },
+        blue: { primary: '#2196F3', secondary: '#E3F2FD', accent: '#1976D2' },
+        green: { primary: '#4CAF50', secondary: '#E8F5E9', accent: '#388E3C' },
+        purple: { primary: '#9C27B0', secondary: '#F3E5F5', accent: '#7B1FA2' },
+        orange: { primary: '#FF9800', secondary: '#FFF3E0', accent: '#F57C00' },
+        teal: { primary: '#009688', secondary: '#E0F2F1', accent: '#00796B' }
+    };
+    
+    function setupColorCustomization() {
+        const presetButtons = document.querySelectorAll('.preset-btn');
+        const primaryPicker = document.getElementById('primary-color-picker');
+        const secondaryPicker = document.getElementById('secondary-color-picker');
+        const accentPicker = document.getElementById('accent-color-picker');
+        const primaryValue = document.getElementById('primary-color-value');
+        const secondaryValue = document.getElementById('secondary-color-value');
+        const accentValue = document.getElementById('accent-color-value');
+        const applyBtn = document.getElementById('apply-custom-colors-btn');
+        const resetBtn = document.getElementById('reset-colors-btn');
+        
+        // Cargar colores guardados
+        loadSavedColors();
+        
+        // Paletas predefinidas
+        presetButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preset = btn.dataset.preset;
+                const colors = colorPresets[preset];
+                applyColorScheme(colors.primary, colors.secondary, colors.accent);
+                saveColors({ ...colors, preset });
+                updateActivePreset(preset);
+            });
+        });
+        
+        // Actualizar valores mostrados cuando cambian los pickers
+        primaryPicker.addEventListener('input', (e) => {
+            primaryValue.textContent = e.target.value;
+        });
+        secondaryPicker.addEventListener('input', (e) => {
+            secondaryValue.textContent = e.target.value;
+        });
+        accentPicker.addEventListener('input', (e) => {
+            accentValue.textContent = e.target.value;
+        });
+        
+        // Aplicar colores personalizados
+        applyBtn.addEventListener('click', () => {
+            const primary = primaryPicker.value;
+            const secondary = secondaryPicker.value;
+            const accent = accentPicker.value;
+            applyColorScheme(primary, secondary, accent);
+            saveColors({ primary, secondary, accent, preset: 'custom' });
+            updateActivePreset('custom');
+        });
+        
+        // Resetear a default
+        resetBtn.addEventListener('click', () => {
+            const colors = colorPresets.default;
+            applyColorScheme(colors.primary, colors.secondary, colors.accent);
+            primaryPicker.value = colors.primary;
+            secondaryPicker.value = colors.secondary;
+            accentPicker.value = colors.accent;
+            primaryValue.textContent = colors.primary;
+            secondaryValue.textContent = colors.secondary;
+            accentValue.textContent = colors.accent;
+            saveColors({ ...colors, preset: 'default' });
+            updateActivePreset('default');
+        });
+    }
+    
+    function applyColorScheme(primary, secondary, accent) {
+        const root = document.documentElement;
+        
+        // Aplicar color principal
+        root.style.setProperty('--color-primary', primary);
+        root.style.setProperty('--color-primary-dark', shadeColor(primary, -20));
+        root.style.setProperty('--color-primary-light', shadeColor(primary, 20));
+        
+        // Aplicar color secundario
+        root.style.setProperty('--color-secondary', secondary);
+        
+        // Aplicar color de acento
+        root.style.setProperty('--color-accent', accent);
+        
+        console.log('Colores aplicados:', { primary, secondary, accent });
+    }
+    
+    function shadeColor(color, percent) {
+        let R = parseInt(color.substring(1, 3), 16);
+        let G = parseInt(color.substring(3, 5), 16);
+        let B = parseInt(color.substring(5, 7), 16);
+        
+        R = parseInt(R * (100 + percent) / 100);
+        G = parseInt(G * (100 + percent) / 100);
+        B = parseInt(B * (100 + percent) / 100);
+        
+        R = (R < 255) ? R : 255;
+        G = (G < 255) ? G : 255;
+        B = (B < 255) ? B : 255;
+        
+        const RR = ((R.toString(16).length == 1) ? "0" + R.toString(16) : R.toString(16));
+        const GG = ((G.toString(16).length == 1) ? "0" + G.toString(16) : G.toString(16));
+        const BB = ((B.toString(16).length == 1) ? "0" + B.toString(16) : B.toString(16));
+        
+        return "#" + RR + GG + BB;
+    }
+    
+    function saveColors(colors) {
+        localStorage.setItem('appColors', JSON.stringify(colors));
+    }
+    
+    function loadSavedColors() {
+        const saved = localStorage.getItem('appColors');
+        if (saved) {
+            const colors = JSON.parse(saved);
+            applyColorScheme(colors.primary, colors.secondary, colors.accent);
+            
+            // Actualizar los pickers
+            const primaryPicker = document.getElementById('primary-color-picker');
+            const secondaryPicker = document.getElementById('secondary-color-picker');
+            const accentPicker = document.getElementById('accent-color-picker');
+            const primaryValue = document.getElementById('primary-color-value');
+            const secondaryValue = document.getElementById('secondary-color-value');
+            const accentValue = document.getElementById('accent-color-value');
+            
+            if (primaryPicker) {
+                primaryPicker.value = colors.primary;
+                primaryValue.textContent = colors.primary;
+            }
+            if (secondaryPicker) {
+                secondaryPicker.value = colors.secondary;
+                secondaryValue.textContent = colors.secondary;
+            }
+            if (accentPicker) {
+                accentPicker.value = colors.accent;
+                accentValue.textContent = colors.accent;
+            }
+            
+            updateActivePreset(colors.preset || 'default');
+        }
+    }
+    
+    function updateActivePreset(presetName) {
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.preset === presetName) {
+                btn.classList.add('active');
+            }
+        });
     }
 
     // --- Ejecutar Inicialización ---

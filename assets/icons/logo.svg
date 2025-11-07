@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Fondo de la pizza -->
+  <circle cx="100" cy="100" r="85" fill="#F4A460" stroke="#D2691E" stroke-width="3"/>
+  
+  <!-- Queso -->
+  <circle cx="100" cy="100" r="80" fill="#FFE4B5"/>
+  
+  <!-- Pepperonis -->
+  <circle cx="70" cy="70" r="12" fill="#E63946"/>
+  <circle cx="130" cy="70" r="12" fill="#E63946"/>
+  <circle cx="70" cy="130" r="12" fill="#E63946"/>
+  <circle cx="130" cy="130" r="12" fill="#E63946"/>
+  <circle cx="100" cy="100" r="12" fill="#E63946"/>
+  <circle cx="85" cy="95" r="10" fill="#E63946"/>
+  <circle cx="115" cy="105" r="10" fill="#E63946"/>
+  
+  <!-- Sombras en pepperonis -->
+  <circle cx="70" cy="70" r="12" fill="url(#pepperoniGrad)" opacity="0.3"/>
+  <circle cx="130" cy="70" r="12" fill="url(#pepperoniGrad)" opacity="0.3"/>
+  <circle cx="70" cy="130" r="12" fill="url(#pepperoniGrad)" opacity="0.3"/>
+  <circle cx="130" cy="130" r="12" fill="url(#pepperoniGrad)" opacity="0.3"/>
+  <circle cx="100" cy="100" r="12" fill="url(#pepperoniGrad)" opacity="0.3"/>
+  
+  <!-- Albahaca -->
+  <path d="M 50 100 Q 45 95 50 90 Q 55 95 50 100 Z" fill="#4CAF50"/>
+  <path d="M 150 110 Q 145 105 150 100 Q 155 105 150 110 Z" fill="#4CAF50"/>
+  <path d="M 100 130 Q 95 125 100 120 Q 105 125 100 130 Z" fill="#4CAF50"/>
+  
+  <!-- Gradientes -->
+  <defs>
+    <radialGradient id="pepperoniGrad">
+      <stop offset="0%" style="stop-color:#000;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#000;stop-opacity:0" />
+    </radialGradient>
+    <radialGradient id="cheeseGrad">
+      <stop offset="0%" style="stop-color:#fff;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#fff;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Brillo del queso -->
+  <circle cx="100" cy="100" r="80" fill="url(#cheeseGrad)" opacity="0.4"/>
+  
+  <!-- Texto (opcional) -->
+  <text x="100" y="195" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#E63946" text-anchor="middle">Pizza Master</text>
+</svg>

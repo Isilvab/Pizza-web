@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Pizza base -->
+  <circle cx="32" cy="32" r="28" fill="#FFD54F" stroke="#F57C00" stroke-width="2"/>
+  
+  <!-- Pepperoni -->
+  <circle cx="24" cy="26" r="6" fill="#D32F2F"/>
+  <circle cx="40" cy="28" r="6" fill="#D32F2F"/>
+  <circle cx="32" cy="38" r="6" fill="#D32F2F"/>
+  
+  <!-- Basil -->
+  <ellipse cx="30" cy="20" rx="4" ry="6" fill="#43A047" transform="rotate(-20 30 20)"/>
+  <ellipse cx="40" cy="40" rx="4" ry="5" fill="#43A047" transform="rotate(30 40 40)"/>
+  
+  <!-- Highlights -->
+  <circle cx="24" cy="24" r="1.5" fill="#FF5252" opacity="0.6"/>
+  <circle cx="40" cy="26" r="1.5" fill="#FF5252" opacity="0.6"/>
+</svg>

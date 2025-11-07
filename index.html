@@ -3,21 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Pizzas</title>
+    <title>Pizza Master - Gestor Profesional de Pizzas</title>
     <link rel="stylesheet" href="assets/styles.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+    <link rel="apple-touch-icon" href="assets/icons/logo-pizza.svg">
+    <meta name="theme-color" content="#e63946">
+    <meta name="description" content="Gestiona tus recetas de pizza, inventario, costos y producción de forma profesional">
 
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Nuevos componentes de UI -->
+    <script src="assets/splash-screen.js"></script>
+    <script src="assets/toast-notifications.js"></script>
+    <script src="assets/sweet-confirm.js"></script>
+    <script src="assets/app-tour.js"></script>
+    <script src="assets/camera-capture.js"></script>
+    <script src="assets/camera-integration.js"></script>
+    <script src="assets/ui-enhancements.js"></script>
 </head>
 <body>
 
     <div id="login-wall">
         <div class="login-box">
-            <h1>Gestor de Pizzas</h1>
+            <img src="assets/icons/logo-pizza.svg" alt="Pizza Master Logo" class="login-logo">
+            <h1>Pizza Master</h1>
             <p id="login-message">Por favor, inicia sesión para acceder a tus recetas.</p>
             <button id="login-btn" class="btn btn-primary">Iniciar Sesión con Google</button>
             <p id="login-error-message" class="status-message" style="display: none;"></p>
@@ -25,6 +38,11 @@
     </div>
 
     <div id="app-container-main" class="app-container" style="display: none;">
+    
+        <!-- Botón flotante de ayuda -->
+        <button id="help-fab" class="help-fab" aria-label="Ayuda y Tour" title="Ayuda (Ctrl+H)">
+            <span class="help-fab-icon">?</span>
+        </button>
     
         <nav class="main-nav">
             <button class="nav-tab active" data-tab="recetas">
@@ -100,7 +118,116 @@
                 <h3 style="margin: 2rem 0 1rem 0; color: var(--color-text);">📝 Mis Entradas</h3>
                 <div id="diary-list" class="timeline"></div>
             </section>
-            <section id="ajustes" class="tab-content"><header class="content-header"><h2>Ajustes y Datos</h2></header><div class="settings-group"><h3>Gestión de Datos</h3><p>Guarda o carga todos tus datos (recetas, inventario, diario) en un archivo JSON.</p><div class="controls"><button id="export-json-btn" class="btn btn-secondary">Exportar Datos (JSON)</button><label for="import-json-input" class="btn btn-warning">Importar Datos (JSON)</label><input type="file" id="import-json-input" accept=".json" style="display: none;"></div><p id="import-status" class="status-message"></p></div></section>
+            <section id="ajustes" class="tab-content">
+                <header class="content-header">
+                    <h2>Ajustes y Datos</h2>
+                </header>
+                
+                <!-- Panel de Administración (solo visible para admin) -->
+                <div id="admin-panel" style="display: none;">
+                    <div class="settings-group">
+                        <h3>🔐 Panel de Administración</h3>
+                        <p>Gestiona las solicitudes de acceso y usuarios autorizados.</p>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h4>Solicitudes de Acceso Pendientes</h4>
+                        <div id="access-requests-list"></div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h4>Usuarios Autorizados</h4>
+                        <div id="authorized-users-list"></div>
+                    </div>
+                    
+                    <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--color-border);">
+                </div>
+                
+                <div class="settings-group">
+                    <h3>Cuenta</h3>
+                    <p>Gestiona tu sesión y cuenta de usuario.</p>
+                    <div class="controls">
+                        <button id="logout-settings-btn" class="btn btn-danger">Cerrar Sesión</button>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>🎨 Personalización de Colores</h3>
+                    <p>Personaliza los colores de la aplicación a tu gusto.</p>
+                    
+                    <div class="color-presets">
+                        <h4 style="font-size: 1rem; margin-bottom: 1rem;">Paletas Predefinidas:</h4>
+                        <div class="preset-buttons">
+                            <button class="preset-btn" data-preset="default">
+                                <span class="preset-color" style="background: #e63946;"></span>
+                                Pizza Roja (Default)
+                            </button>
+                            <button class="preset-btn" data-preset="blue">
+                                <span class="preset-color" style="background: #2196F3;"></span>
+                                Azul Mediterráneo
+                            </button>
+                            <button class="preset-btn" data-preset="green">
+                                <span class="preset-color" style="background: #4CAF50;"></span>
+                                Verde Italiano
+                            </button>
+                            <button class="preset-btn" data-preset="purple">
+                                <span class="preset-color" style="background: #9C27B0;"></span>
+                                Púrpura
+                            </button>
+                            <button class="preset-btn" data-preset="orange">
+                                <span class="preset-color" style="background: #FF9800;"></span>
+                                Naranja Mandarina
+                            </button>
+                            <button class="preset-btn" data-preset="teal">
+                                <span class="preset-color" style="background: #009688;"></span>
+                                Verde Azulado
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="custom-colors" style="margin-top: 2rem;">
+                        <h4 style="font-size: 1rem; margin-bottom: 1rem;">Personalizado:</h4>
+                        <div class="color-picker-grid">
+                            <div class="color-picker-item">
+                                <label for="primary-color-picker">Color Principal:</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="color" id="primary-color-picker" value="#e63946">
+                                    <span id="primary-color-value">#e63946</span>
+                                </div>
+                            </div>
+                            <div class="color-picker-item">
+                                <label for="secondary-color-picker">Color Secundario:</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="color" id="secondary-color-picker" value="#f1faee">
+                                    <span id="secondary-color-value">#f1faee</span>
+                                </div>
+                            </div>
+                            <div class="color-picker-item">
+                                <label for="accent-color-picker">Color de Acento:</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="color" id="accent-color-picker" value="#457b9d">
+                                    <span id="accent-color-value">#457b9d</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="controls" style="margin-top: 1rem;">
+                            <button id="apply-custom-colors-btn" class="btn btn-primary">Aplicar Colores</button>
+                            <button id="reset-colors-btn" class="btn btn-secondary">Restablecer a Default</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-group">
+                    <h3>Gestión de Datos</h3>
+                    <p>Guarda o carga todos tus datos (recetas, inventario, diario) en un archivo JSON.</p>
+                    <div class="controls">
+                        <button id="export-json-btn" class="btn btn-secondary">Exportar Datos (JSON)</button>
+                        <label for="import-json-input" class="btn btn-warning">Importar Datos (JSON)</label>
+                        <input type="file" id="import-json-input" accept=".json" style="display: none;">
+                    </div>
+                    <p id="import-status" class="status-message"></p>
+                </div>
+            </section>
             <section id="herramientas" class="tab-content">
                 <header class="content-header">
                     <h2>Checklist de Herramientas</h2>

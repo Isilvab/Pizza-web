@@ -1,6 +1,7 @@
-// --- Define el único email autorizado ---
-// !! REEMPLAZA ESTO CON TU PROPIO EMAIL !!
-const ALLOWED_EMAIL = "isilber31@gmail.com";
+// --- Define el email del administrador principal (DEPRECADO - usar UID) ---
+const ADMIN_EMAIL = "isilber31@gmail.com"; // Solo para fallback
+// Lista de UIDs de administradores (más seguro que email)
+const ADMIN_UIDS = []; // Se llenará desde Firestore
 // ---------------------------------------------
 
 
@@ -10,6 +11,66 @@ let dbUserRef = null;
 let storageRef = null; // <-- NUEVO para Storage
 let isSyncing = false; 
 let unsubscribeSnapshot = null; 
+
+// --- Funciones Auxiliares ---
+
+/**
+ * Verifica si un usuario es administrador
+ * @param {Object} user - Objeto de usuario de Firebase Auth
+ * @returns {Promise<boolean>} - true si es admin, false si no
+ */
+async function checkIfAdmin(user) {
+  if (!user || !user.uid) return false;
+  
+  try {
+    // 1. Verificar en la colección 'admins' de Firestore
+    const adminDoc = await firestore.collection('admins').doc(user.uid).get();
+    if (adminDoc.exists && adminDoc.data().isAdmin === true) {
+      console.log("✅ Usuario verificado como admin por UID en Firestore");
+      return true;
+    }
+    
+    // 2. Fallback: verificar por email (para compatibilidad)
+    const userEmail = (user.email || '').toLowerCase().trim();
+    const adminEmail = ADMIN_EMAIL.toLowerCase().trim();
+    if (userEmail === adminEmail) {
+      console.log("⚠️ Usuario verificado como admin por EMAIL (fallback)");
+      console.log("💡 Recomendación: Agregar UID a la colección 'admins' en Firestore");
+      
+      // Auto-crear el documento en Firestore para futuras verificaciones
+      try {
+        await firestore.collection('admins').doc(user.uid).set({
+          email: user.email,
+          isAdmin: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: 'auto-migration'
+        });
+        console.log("✅ Documento de admin creado automáticamente en Firestore");
+      } catch (error) {
+        console.warn("No se pudo crear el documento de admin:", error);
+      }
+      
+      return true;
+    }
+    
+    console.log("❌ Usuario NO es administrador");
+    return false;
+    
+  } catch (error) {
+    console.error("Error verificando admin:", error);
+    
+    // Si hay error de permisos, usar fallback de email
+    const userEmail = (user.email || '').toLowerCase().trim();
+    const adminEmail = ADMIN_EMAIL.toLowerCase().trim();
+    const isFallbackAdmin = userEmail === adminEmail;
+    
+    if (isFallbackAdmin) {
+      console.warn("⚠️ Usando verificación de email como fallback debido a error");
+    }
+    
+    return isFallbackAdmin;
+  }
+}
 
 // --- 1. Inicialización y Autenticación ---
 
@@ -32,28 +93,59 @@ function initFirebaseSync(onLogin, onLogout) {
     if (user) {
       // --- Usuario ha iniciado sesión ---
       
-      // --- Comprobación de Acceso ---
-      const isAllowed = user.email.toLowerCase() === ALLOWED_EMAIL.toLowerCase();
-
-      if (!isAllowed) {
-        console.warn(`Intento de acceso denegado para: ${user.email}`);
-        showLoginScreen("Acceso Denegado. Esta cuenta no está autorizada.");
-        signOut(); // Desloguear al usuario no autorizado
-        return; 
+      // Verificar si es admin (primero por UID, luego por email como fallback)
+      const isAdmin = await checkIfAdmin(user);
+      
+      console.log("=== VERIFICACIÓN DE ADMINISTRADOR ===");
+      console.log("UID del usuario:", user.uid);
+      console.log("Email del usuario:", user.email);
+      console.log("¿Es administrador?:", isAdmin);
+      console.log("====================================");
+      
+      if (!isAdmin) {
+        // Verificar si el usuario está en la lista de autorizados
+        const accessDoc = await firestore.collection('authorized_users').doc(user.uid).get();
+        
+        if (!accessDoc.exists || accessDoc.data().status !== 'approved') {
+          // Usuario no autorizado - crear o verificar solicitud pendiente
+          const requestDoc = await firestore.collection('access_requests').doc(user.uid).get();
+          
+          if (!requestDoc.exists) {
+            // Crear solicitud de acceso
+            await firestore.collection('access_requests').doc(user.uid).set({
+              email: user.email,
+              displayName: user.displayName || 'Usuario',
+              photoURL: user.photoURL || '',
+              requestedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              status: 'pending'
+            });
+            console.log("Solicitud de acceso creada para:", user.email);
+            showPendingAccessScreen(user, true); // Nueva solicitud
+          } else {
+            // Solicitud ya existe
+            showPendingAccessScreen(user, false); // Solicitud existente
+          }
+          
+          console.warn(`Acceso pendiente de aprobación para: ${user.email}`);
+          // NO cerrar sesión automáticamente, mantener al usuario en pantalla de espera
+          return;
+        }
+        
+        console.log("Usuario autorizado conectado:", user.email);
+      } else {
+        console.log("Administrador conectado:", user.email);
       }
       
-      // --- Usuario AUTORIZADO ---
+      // --- Usuario AUTORIZADO o ADMIN ---
       currentUser = user;
       dbUserRef = firestore.collection('users').doc(currentUser.uid).collection('datasets').doc('appData');
-      storageRef = firebase.storage().ref().child(`users/${currentUser.uid}/images`); // <-- NUEVO: Ruta de Storage
-      
-      console.log("Usuario autorizado conectado:", currentUser.email);
+      storageRef = firebase.storage().ref().child(`users/${currentUser.uid}/images`);
       
       // Ocultar muralla y mostrar app
       loginWall.style.display = 'none';
-      appContainer.style.display = 'block'; // <-- ¡MOSTRAR LA APP!
+      appContainer.style.display = 'block';
       
-      onLogin(user); // Llama a la función en app.js para actualizar la UI del perfil
+      onLogin(user);
 
       // --- Siempre descargar de la nube al iniciar sesión ---
       await pullFromCloud();
@@ -100,6 +192,82 @@ function initFirebaseSync(onLogin, onLogout) {
       } else {
           loginError.style.display = 'none';
       }
+  }
+  
+  /**
+   * Muestra la pantalla de acceso pendiente
+   */
+  function showPendingAccessScreen(user, isNewRequest) {
+      const loginWall = document.getElementById('login-wall');
+      const loginBox = loginWall.querySelector('.login-box');
+      
+      loginBox.innerHTML = `
+          <div style="text-align: center;">
+              <img src="${user.photoURL || 'assets/img/placeholder.svg'}" 
+                   alt="Avatar" 
+                   style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; margin-bottom: 0.75rem; border: 3px solid var(--color-primary);">
+              <h2 style="margin: 0 0 0.25rem 0; font-size: 1.5rem;">¡Hola, ${user.displayName || 'Usuario'}!</h2>
+              <p style="color: var(--color-text-alt); margin: 0 0 1.25rem 0; font-size: 0.9rem;">${user.email}</p>
+              
+              ${isNewRequest ? `
+                  <div style="background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4CAF50; padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px; text-align: left;">
+                      <h3 style="color: #4CAF50; margin: 0 0 0.25rem 0; font-size: 1rem;">✓ Solicitud Enviada</h3>
+                      <p style="margin: 0; color: var(--color-text); font-size: 0.85rem;">Tu solicitud de acceso ha sido enviada correctamente.</p>
+                  </div>
+              ` : ''}
+              
+              <div style="background: var(--color-card); padding: 1.25rem; border-radius: 8px; margin-bottom: 1rem;">
+                  <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⏳</div>
+                  <h2 style="color: var(--color-primary); margin: 0 0 0.75rem 0; font-size: 1.25rem;">Acceso Pendiente</h2>
+                  <p style="color: var(--color-text); margin: 0 0 0.5rem 0; font-size: 0.9rem;">
+                      El administrador debe aprobar tu solicitud para que puedas acceder a la aplicación.
+                  </p>
+                  <p style="color: var(--color-text-alt); font-size: 0.85rem; margin: 0;">
+                      La página se actualizará automáticamente cuando seas aprobado.
+                  </p>
+              </div>
+              
+              <div style="margin: 1rem 0;">
+                  <div class="spinner" style="margin: 0 auto;"></div>
+                  <p style="color: var(--color-text-alt); font-size: 0.85rem; margin: 0.75rem 0 0 0;">
+                      Esperando aprobación...
+                  </p>
+              </div>
+              
+              <button id="logout-pending-btn" class="btn btn-secondary" style="margin-top: 1rem; width: 100%;">
+                  Cerrar Sesión
+              </button>
+              
+              <p style="margin-top: 1rem; color: var(--color-text-alt); font-size: 0.8rem;">
+                  Si tienes preguntas, contacta al administrador.
+              </p>
+          </div>
+      `;
+      
+      // Agregar evento al botón de logout
+      const logoutBtn = document.getElementById('logout-pending-btn');
+      if (logoutBtn) {
+          logoutBtn.addEventListener('click', () => {
+              signOut();
+          });
+      }
+      
+      // Mostrar la pantalla de login/espera
+      loginWall.style.display = 'flex';
+      
+      // Escuchar cambios en tiempo real para detectar cuando se aprueba el acceso
+      const unsubscribe = firestore.collection('authorized_users').doc(user.uid)
+          .onSnapshot((doc) => {
+              if (doc.exists && doc.data().status === 'approved') {
+                  console.log("✅ Acceso aprobado! Recargando aplicación...");
+                  // Desuscribirse del listener
+                  unsubscribe();
+                  // Recargar la página para que onAuthStateChanged vuelva a verificar
+                  window.location.reload();
+              }
+          }, (error) => {
+              console.error("Error escuchando estado de autorización:", error);
+          });
   }
   
   // Como no estamos usando redirect, podemos mostrar el botón de login inmediatamente
