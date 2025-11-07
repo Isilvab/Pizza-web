@@ -171,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupModalControls() {
         // ... (el resto de los listeners sin cambios)
         addRecipeBtn.addEventListener('click', () => openRecipeModal());
+        
         addIngredientBtn.addEventListener('click', () => openInventoryModal());
         addDiaryEntryBtn.addEventListener('click', () => openDiaryModal());
         addToolBtn.addEventListener('click', () => openToolModal());

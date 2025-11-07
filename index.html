@@ -24,6 +24,7 @@
     <script src="assets/camera-capture.js"></script>
     <script src="assets/camera-integration.js"></script>
     <script src="assets/ui-enhancements.js"></script>
+    <script src="assets/global-search.js"></script>
 </head>
 <body>
 
@@ -38,6 +39,32 @@
     </div>
 
     <div id="app-container-main" class="app-container" style="display: none;">
+    
+        <!-- Barra de búsqueda global -->
+        <div id="global-search-bar" class="global-search-bar">
+            <div class="search-input-container">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input 
+                    type="text" 
+                    id="global-search-input" 
+                    class="global-search-input" 
+                    placeholder="Buscar recetas, ingredientes, masas..." 
+                    autocomplete="off"
+                />
+                <button id="clear-search-btn" class="clear-search-btn" style="display: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div id="search-results-dropdown" class="search-results-dropdown" style="display: none;">
+                <div id="search-results-content"></div>
+            </div>
+        </div>
     
         <!-- Botón flotante de ayuda -->
         <button id="help-fab" class="help-fab" aria-label="Ayuda y Tour" title="Ayuda (Ctrl+H)">
@@ -96,7 +123,17 @@
             </div>
         </div>
         <main class="content">
-            <section id="recetas" class="tab-content active"><header class="content-header"><h2>Mis Recetas de Pizza</h2><button id="add-recipe-btn" class="btn btn-primary"><span class="btn-icon">+</span> Añadir Receta</button></header><div id="recipe-list" class="grid-list"></div></section>
+            <section id="recetas" class="tab-content active">
+                <header class="content-header">
+                    <h2>Mis Recetas de Pizza</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button id="add-recipe-btn" class="btn btn-primary">
+                            <span class="btn-icon">+</span> Añadir Receta
+                        </button>
+                    </div>
+                </header>
+                <div id="recipe-list" class="grid-list"></div>
+            </section>
             <section id="inventario" class="tab-content"><header class="content-header"><h2>Inventario de Ingredientes</h2><button id="add-ingredient-btn" class="btn btn-primary"><span class="btn-icon">+</span> Añadir Ingrediente</button></header><p class="subtitle">Aquí defines los ingredientes base (nombre, imagen y precio) que usarás en tus recetas.</p><div id="inventory-list" class="grid-list ingredients-grid"></div></section>
             <section id="calculadora" class="tab-content"><header class="content-header"><h2>Gestor de Masas</h2></header><div class="form-container" style="margin-bottom: 1.5rem;"><div class="form-group"><label for="dough-recipe-select">Mis Recetas de Masa Guardadas:</label><select id="dough-recipe-select"><option value="">-- Seleccionar Receta --</option></select><div class="controls" style="margin-top: 1rem;"><button id="load-dough-recipe-btn" class="btn btn-secondary">Cargar en Calculadora</button><button id="view-dough-recipe-btn" class="btn btn-light">Ver Detalles</button><button id="delete-dough-recipe-btn" class="btn btn-danger btn-small">Borrar</button></div></div></div><div class="form-container"><h3>Calculadora</h3><div class="form-group"><label for="calc-pizzas">Número de Pizzas:</label><input type="number" id="calc-pizzas" value="4"></div><div class="form-group"><label for="calc-peso">Peso por Masa (g):</label><input type="number" id="calc-peso" value="250"></div><div class="form-group"><label for="calc-hidratacion">Hidratación (%):</label><input type="number" id="calc-hidratacion" value="65" step="0.1"></div><div class="form-group"><label for="calc-sal">Sal (%):</label><input type="number" id="calc-sal" value="2.5" step="0.1"></div><div class="form-group"><label for="calc-levadura">Levadura Fresca (%):</label><input type="number" id="calc-levadura" value="0.3" step="0.1"></div><div class="controls"><button id="calculate-btn" class="btn btn-primary">Calcular Ingredientes</button><button id="save-dough-recipe-btn" class="btn btn-secondary">Guardar como Receta de Masa</button></div></div><div id="calc-results" class="results-box"></div></section>
             <section id="compras" class="tab-content"><header class="content-header"><h2>Lista de Compras</h2></header><p class="subtitle">Selecciona cuántas pizzas de cada tipo quieres hacer para generar una lista de compras total.</p><div class="form-container" style="margin-bottom: 1.5rem;"><h3>Pizzas a Preparar</h3><div id="shopping-list-builder"></div><div class="form-group" style="margin-top: 1.5rem;"><label for="shopping-dough-recipe">Receta de Masa a Usar:</label><select id="shopping-dough-recipe"><option value="">-- Sin calcular harina (solo toppings) --</option></select><p style="font-size: 0.85rem; color: var(--color-text-alt); margin-top: 0.5rem;">Esta receta se usará para calcular la harina total según el número de pizzas seleccionadas.</p></div><div class="form-group"><label for="shopping-flour-ingredient">Harina del Inventario (para calcular precio):</label><select id="shopping-flour-ingredient"><option value="">-- Sin calcular precio de harina --</option></select><p style="font-size: 0.85rem; color: var(--color-text-alt); margin-top: 0.5rem;">Selecciona qué ingrediente de harina usar para calcular el costo.</p></div><button id="generate-shopping-list-btn" class="btn btn-primary" style="margin-top: 1rem;">Generar Lista de Compras</button><button id="print-shopping-pdf-btn" class="btn btn-secondary" style="margin-top: 1rem; margin-left: 0.5rem;">📄 Descargar PDF</button></div><div class="results-box"><h4>Total de Ingredientes</h4><ul id="shopping-list-results" class="item-list"></ul></div></section>

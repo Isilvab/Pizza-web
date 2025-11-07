@@ -46,7 +46,17 @@ Una aplicación web completa y profesional para gestionar recetas de pizza, inve
 * **Exporta a PDF** para imprimir o compartir
 * **Incluye masa y toppings**
 
-### 📔 Diario de Horneado
+### � Generador de Libro de Recetas PDF
+* **Crea libros PDF profesionales** estilo restaurante italiano
+* **Diseño elegante** con portada personalizable
+* **Selecciona las recetas** que quieres incluir
+* **Paleta de colores auténtica** italiana (rojo, verde, dorado, terracota)
+* **Páginas decorativas** con ornamentos y marcos
+* **Imágenes de recetas** en alta calidad
+* **Índice organizado** con numeración
+* **Perfecto para regalar** o imprimir
+
+### �📔 Diario de Horneado
 * **Registro de horneados** con fechas y notas
 * **Videos útiles** de YouTube integrados
 * **Timeline visual** de tu progreso
@@ -113,6 +123,7 @@ Al abrir la aplicación por primera vez:
 
 - **[Guía de Nuevas Características](NUEVAS_CARACTERISTICAS.md)** - Todas las mejoras de UI
 - **[Características Móviles](CARACTERISTICAS_MOVILES.md)** - Guía de implementación móvil
+- **[Generador de Libro PDF](LIBRO_RECETAS_PDF.md)** - Cómo crear libros de recetas profesionales
 - **[Resumen de Mejoras](RESUMEN_MEJORAS.md)** - Changelog completo
 - **[Ejemplos de Uso](EJEMPLOS_USO.js)** - Código de ejemplo para desarrolladores
 
@@ -267,6 +278,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 - ✅ Confirmaciones elegantes
 - ✅ Atajos de teclado
 - ✅ Personalización de colores
+- ✅ Generador de libro de recetas PDF
 
 ### v2.1.0 (Próximamente)
 - [ ] Escaneo de códigos de barras
